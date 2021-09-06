@@ -5,7 +5,7 @@
 #include "osd/osd_types.h"
 
 #include "osd/ClassHandler.h"
-#include "message/MOSDOp.h"
+#include "messages/MOSDOp.h"
 
 #include "auth/Crypto.h"
 #include "common/armor.h"
@@ -48,9 +48,9 @@ void cls_free(void *p)
 	free(p);
 }
 
-int cls_register(const char *name, cls_handler_t *handle)
+int cls_register(const char *name, cls_handle_t *handle)
 {
-	ClassHandler::ClassData *cls = ch->refister_class(name);
+	ClassHandler::ClassData *cls = ch->register_class(name);
 	*handle = (cls_handle_t)cls;
 	return (cls != NULL);
 }
@@ -80,7 +80,7 @@ int cls_register_cxx_method(cls_handle_t hclass, const char *method, int flags, 
 	ClassHandler::ClassData *cls = (ClassHandler::ClassData *)hclass;
 	cls_method_handle_t hmethod = (cls_method_handle_t)cls->register_cxx_method(method, flags, class_call);
 	if(handle)
-		*handle = method;
+		*handle = hmethod;
 	return (hmethod != NULL);
 }
 
@@ -92,7 +92,7 @@ int cls_unregister_method(cls_method_handle_t handle)
 }
 
 int cls_register_cxx_filter(cls_handle_t hclass, const std::string &filter_name, cls_cxx_filter_factory_t fn,
-	clscls_filter_handle_t *handle)
+	cls_filter_handle_t *handle)
 {
 	ClassHandler::ClassData *cls = (ClassHandler::ClassData *)hclass;
 	cls_filter_handle_t hfilter = (cls_filter_handle_t)cls->register_cxx_filter(filter_name, fn);
@@ -108,7 +108,7 @@ void cls_unregister_filter(cls_filter_handle_t handle)
 	filter->unregister();
 }
 
-int cls_call(cls_method_context_t hctx, const char *cls, const char *method, char *indata, int datalen, char *outdata,
+int cls_call(cls_method_context_t hctx, const char *cls, const char *method, char *indata, int datalen, char **outdata,
 	int *outdatalen)
 {
 	bufferlist idata;
@@ -118,7 +118,7 @@ int cls_call(cls_method_context_t hctx, const char *cls, const char *method, cha
 
 	op.op.op = CEPH_OSD_OP_CALL;
 	op.op.cls.class_len = strlen(cls);
-	op.op.cls_method_len = strlen(method);
+	op.op.cls.method_len = strlen(method);
 	op.op.cls.indata_len = datalen;
 	op.indata.append(cls, op.op.cls.class_len);
 	op.indata.append(method, op.op.cls.method_len);
@@ -140,10 +140,10 @@ int cls_getxattr(cls_method_context_t hctx, const char *name, char **outdata, in
 {
 	bufferlist name_data;
 	vector<OSDOp> nops(1);
-	OSDOp *op = nops[0];
+	OSDOp &op = nops[0];
 	int r;
 
-	op.op.op = CPEH_OSD_OP_GETXATTR;
+	op.op.op = CEPH_OSD_OP_GETXATTR;
 	op.op.xattr.name_len = strlen(name);
 	op.indata.append(name, op.op.xattr.name_len);
 	r = DoRgwOps(nops);
@@ -165,10 +165,10 @@ int cls_setxattr(cls_method_context_t hctx, const char *name, const char *value,
 	SaOpReq *pOpReq = pctx->opReq;
 	SaOpReq opreq = *pOpReq;
 	MOSDOp *ptr = reinterpret_cast<MOSDOp *>(pOpReq->ptrMosdop);
-	opRequestOps op;
+	OpRequestOps op;
 	int r;
 
-	op.op.op = CPEH_OSD_OP_SETXATTR;
+	op.opSubType = CEPH_OSD_OP_SETXATTR;
 	op.objName = ptr->get_oid().name;
 	op.keys.push_back(string(name));
 	op.values.push_back(string(value, val_len));
@@ -182,7 +182,7 @@ int cls_setxattr(cls_method_context_t hctx, const char *name, const char *value,
 	return r;	
 }
 
-int cls_read(cls_method_context_t hctx, int ofs, int lenm char **outdata, int *outdatalen)
+int cls_read(cls_method_context_t hctx, int ofs, int len, char **outdata, int *outdatalen)
 {
 	vector<OSDOp> ops(1);
 	ops[0].op.op = CEPH_OSD_OP_SYNC_READ;
@@ -196,7 +196,7 @@ int cls_read(cls_method_context_t hctx, int ofs, int lenm char **outdata, int *o
 	if(!*outdata)
 		return -ENOMEM;
 	memcpy(*outdata, ops[0].outdata.c_str(), ops[0].outdata.length());
-	*outdatalen = ops[0].outdata.lenght();
+	*outdatalen = ops[0].outdata.length();
 
 	return *outdatalen;
 }
@@ -231,7 +231,7 @@ uint64_t cls_get_client_features(cls_method_context_t hctx)
 int cls_cxx_create(cls_method_context_t hctx, bool exclusive)
 {
 	vector<OSDOp> ops(1);
-	ops[0].op.op = CPEH_OP_CREATE;
+	ops[0].op.op = CEPH_OSD_OP_CREATE;
 	ops[0].op.flags = (exclusive ? CEPH_OSD_OP_FLAG_EXCL : 0);
 	return DoRgwOps(ops);
 }
@@ -309,14 +309,14 @@ int cls_cxx_read2(cls_method_context_t hctx, int ofs, int len, bufferlist *outbl
 	vector<OSDOp> ops(1);
 	int ret;
 	ops[0].op.op = CEPH_OSD_OP_SYNC_READ;
-	ops[0].op.extent.offest = ofs;
+	ops[0].op.extent.offset = ofs;
 	ops[0].op.extent.length = len;
 	ops[0].op.flags = op_flags;
 	ret = DoRgwOps(ops);
 	if(ret < 0)
 		return ret;
 	outbl->claim(ops[0].outdata);
-	return oubl->length();
+	return outbl->length();
 }
 
 int cls_cxx_write(cls_method_context_t hctx, int ofs, int len, bufferlist *inbl)
@@ -324,11 +324,11 @@ int cls_cxx_write(cls_method_context_t hctx, int ofs, int len, bufferlist *inbl)
 	return cls_cxx_write2(hctx, ofs, len, inbl, 0);
 }
 
-int cls_cxx_write2(cls_method_context_t hctx, int ofs, int len, bufferlist *outbl, uint32_t op_flags)
+int cls_cxx_write2(cls_method_context_t hctx, int ofs, int len, bufferlist *inbl, uint32_t op_flags)
 {
 	vector<OSDOp> ops(1);
-	ops[0].op.op = CEPH_OSD_OP_SYNC_WRITE;
-	ops[0].op.extent.offest = ofs;
+	ops[0].op.op = CEPH_OSD_OP_WRITE;
+	ops[0].op.extent.offset = ofs;
 	ops[0].op.extent.length = len;
 	ops[0].op.flags = op_flags;
 	ops[0].indata = *inbl;
@@ -339,8 +339,8 @@ int cls_cxx_write_full(cls_method_context_t hctx, bufferlist *inbl)
 {
 	vector<OSDOp> ops(1);
 	ops[0].op.op = CEPH_OSD_OP_WRITEFULL;
-	ops[0].op.extent.offest = 0;
-	ops[0].op.extent.lenght = inbl->length();
+	ops[0].op.extent.offset = 0;
+	ops[0].op.extent.length = inbl->length();
 	ops[0].indata = *inbl;
 	return DoRgwOps(ops);		
 }
@@ -349,12 +349,12 @@ int cls_cxx_replace(cls_method_context_t hctx, int ofs, int len, bufferlist *inb
 {
 	vector<OSDOp> ops(2);
 	ops[0].op.op = CEPH_OSD_OP_TRUNCATE;
-	ops[0].op.extent.offest = 0;
-	ops[0].op.extent.lenght = 0;
-	ops[0].op.op = CEPH_OSD_OP_WRUTE;
-	ops[0].op.extent.offest = 0;	
-	ops[0].op.extent.lenght = 0;
-	ops[0].indata = *inbl;
+	ops[0].op.extent.offset = 0;
+	ops[0].op.extent.length = 0;
+	ops[1].op.op = CEPH_OSD_OP_WRITE;
+	ops[1].op.extent.offset = ofs;	
+	ops[1].op.extent.length = len;
+	ops[1].indata = *inbl;
 	return DoRgwOps(ops);			
 }
 
@@ -407,7 +407,7 @@ int cls_cxx_getxattrs(cls_method_context_t hctx, map<string, bufferlist> *attrse
 
 	auto iter = ops[0].outdata.cbegin();
 	try{
-		decode(*attrset, uter);
+		decode(*attrset, iter);
 	}catch (buffer::error &err){
 		return -EIO;
 	}
@@ -428,7 +428,7 @@ int cls_cxx_setxattr(cls_method_context_t hctx, const char *name, bufferlist *in
 	op.keys.push_back(string(name));
 	string val;
 	auto bp = inbl->cbegin();
-	bp.copy(inbl->cbegin(), val);
+	bp.copy(inbl->length(), val);
 	op.values.push_back(val);
 
 	vector<OSDOp> ops(1);
@@ -500,17 +500,17 @@ int cls_cxx_map_get_keys(cls_method_context_t hctx, const string &start_obj, uin
 	op.op.op = CEPH_OSD_OP_OMAPGETKEYS;
 
 	ret = DoRgwOps(ops);
-	if( r < 0)
-		return r;
+	if( ret < 0)
+		return ret;
 
-	auto iter = ops[0].outdata.cbegin();
+	auto iter = op.outdata.cbegin();
 	try{
 		decode(*keys, iter);
 		decode(*more, iter);
 	}catch (buffer::error &err){
 		return -EIO;
 	}
-	return vals->size();			
+	return keys->size();			
 }
 
 int cls_cxx_map_get_vals(cls_method_context_t hctx, const string &start_obj, const string &filter_prefix, 
@@ -583,7 +583,7 @@ int cls_cxx_map_get_val(cls_method_context_t hctx, const string &key, bufferlist
 	if(ret < 0)
 		return ret;
 
-	auto iter = ops[0].outdata.cbegin();
+	auto iter = op.outdata.cbegin();
 	try{
 		map<string, bufferlist> m;
 		decode(m, iter);
@@ -598,7 +598,7 @@ int cls_cxx_map_get_val(cls_method_context_t hctx, const string &key, bufferlist
 	return 0;					
 }
 
-int cls_cxx_map_set_val(cls_method_context_t hctx, const string &key, bufferlist *outbl)
+int cls_cxx_map_set_val(cls_method_context_t hctx, const string &key, bufferlist *inbl)
 {
 	SaOpContext *pctx = reinterpret_cast<SaOpContext *>(hctx);
 	SaOpReq *pOpReq = pctx->opReq;
@@ -660,11 +660,11 @@ int cls_cxx_map_remove_key(cls_method_context_t hctx, const string &key)
 {
 	vector<OSDOp> ops(1);
 	OSDOp &op = ops[0];
-	bufferlist &updata_bl = op.indata;
+	bufferlist &update_bl = op.indata;
 	set<string> to_rm;
 	to_rm.insert(key);
 
-	encode(to_rm, updata_bl);
+	encode(to_rm, update_bl);
 
 	op.op.op = CEPH_OSD_OP_OMAPRMKEYS;
 
@@ -673,8 +673,8 @@ int cls_cxx_map_remove_key(cls_method_context_t hctx, const string &key)
 
 int cls_cxx_list_watchers(cls_method_context_t hctx, obj_list_watch_response_t *watchers)
 {
-	vector<OSDOp> ops(1);
-	OSDOp &op = ops[0];
+	vector<OSDOp> nops(1);
+	OSDOp &op = nops[0];
 	int r;
 
 	op.op.op = CEPH_OSD_OP_LIST_WATCHERS;
@@ -682,7 +682,7 @@ int cls_cxx_list_watchers(cls_method_context_t hctx, obj_list_watch_response_t *
 	if(r < 0)
 		return r;
 
-	auto iter = ops.outdata.cbegin();
+	auto iter = op.outdata.cbegin();
 	try{
 		decode(*watchers, iter);
 	}catch (buffer::error &err){
@@ -691,7 +691,7 @@ int cls_cxx_list_watchers(cls_method_context_t hctx, obj_list_watch_response_t *
 	return 0;					
 }
 
-int cls_gen_random_byes(char *buf, int size)
+int cls_gen_random_bytes(char *buf, int size)
 {
 	ch->cct->random()->get_bytes(buf, size);
 	return 0;
@@ -727,7 +727,7 @@ uint64_t cls_current_version(cls_method_context_t hctx)
 	return 0;
 }
 
-int cls_current_subop_ num(cls_method_context_t hctx)
+int cls_current_subop_num(cls_method_context_t hctx)
 {
 	return 0;
 }
@@ -754,7 +754,7 @@ int cls_cxx_chunk_write_and_set(cls_method_context_t hctx, int ofs, int len, buf
 	bufferlist *set_inbl, int set_len)
 {
 	char cname[] = "cas";
-	char method[] = "chumk_set";
+	char method[] = "chunk_set";
 
 	vector<OSDOp> ops(2);
 	ops[0].op.op = CEPH_OSD_OP_WRITE;
@@ -766,7 +766,7 @@ int cls_cxx_chunk_write_and_set(cls_method_context_t hctx, int ofs, int len, buf
 	ops[1].op.op = CEPH_OSD_OP_CALL;
 	ops[1].op.cls.class_len = strlen(cname);
 	ops[1].op.cls.method_len = strlen(method);
-	ops[1].cls.indata_len = set_len;
+	ops[1].op.indata_len = set_len;
 	ops[1].indata.append(cname, ops[1].op.cls.class_len);
 	ops[1].indata.append(method, ops[1].op.cls.method_len);
 	ops[1].indata.append(*set_inbl);

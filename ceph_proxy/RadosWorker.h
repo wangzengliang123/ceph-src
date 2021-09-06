@@ -1,5 +1,5 @@
-#ifndef _CEPH_PROXY_POOL_HANDLER_H_
-#define _CEPH_PROXY_POOL_HANDLER_H_
+#ifndef _CEPH_PROXY_RADOS_WORKER_H_
+#define _CEPH_PROXY_RADOS_WORKER_H_
 
 #include "CephProxyInterface.h"
 #include "CephProxy.h"
@@ -18,18 +18,18 @@
 #define WORKER_MAX_NUM 8
 
 const unsigned PAGE_SIZE = sysconf(_SC_PAGESIZE);
-const unsigned long PAGE_MASK = ~(unsigned long)(PAGESIZE -1);
+const unsigned long PAGE_MASK = ~(unsigned long)(PAGE_SIZE -1);
 
 typedef enum {
-    RADOSWORKER_INITED = 0;
-    RADOSWORKER_RUNING = 1;
-    RADOSWORKER_DOWNED = 2;
+    RADOSWORKER_INITED = 0,
+    RADOSWORKER_RUNING = 1,
+    RADOSWORKER_DOWNED = 2,
 } WorkerState;
 
 typedef enum {
-    IOWORKER_INITED   = 0;
-    IOWORKER_RUNNING  = 1;
-    IOWORKER_STOP     = 2;
+    IOWORKER_INITED   = 0,
+    IOWORKER_RUNNING  = 1,
+    IOWORKER_STOP     = 2,
 } IOWorkerState;
 
 class CephProxy;
@@ -72,7 +72,7 @@ public:
     }
 
     bool AmSelf() const {
-     	return (pthread_self() ==threadid);
+     	return (pthread_self() ==threadId);
     }
 
     int TryCreate(size_t stacksize) {
@@ -96,11 +96,11 @@ public:
 	return r;
     }
 
-    void Create(const char *name, size-t stacksize = 0 ) {
+    void Create(const char *name, size_t stacksize = 0 ) {
 	threadName = name;
 	int ret = TryCreate(stacksize);
 	if (ret != 0) {
-	    std::cout << "Thread::try_create(): pthread_create failed with wrror " << ret << std::endl;
+	    std::cout << "Thread::try_create(): pthread_create failed with error " << ret << std::endl;
 	}
     }
 
@@ -110,7 +110,7 @@ public:
 	}
 	int status = pthread_join(threadId, prval);
 	if (status != 0) {
-	    std::cout<<"Thread::Join: pthread_join failed with wrror " << status << std::endl;
+	    std::cout<<"Thread::Join: pthread_Join failed with error " << status << std::endl;
 	}
 	threadId = 0;
 	return status;
@@ -239,20 +239,20 @@ public:
 
     void Start() {
 	for (int i = 0; i < workerNum; i++) {
-	    RadosIOworker *ioworker = new  RadosWorker(this->proxy);
+	    RadosIOWorker *ioworker = new  RadosIOWorker(this->proxy);
 	    ioworker->StartProc();
-	    ioworkers.push_back(ioworker);
+	    ioWorkers.push_back(ioworker);
 	}
     }
 
     void Stop() {
 	for ( int i = 0; i < workerNum; i++) {
-	   ioworkers[i]->WaitForEmpty();
-	   ioworkers[i]->StopProc();
-	   delete ioworkers[i];
+	   ioWorkers[i]->WaitForEmpty();
+	   ioWorkers[i]->StopProc();
+	   delete ioWorkers[i];
 	}
 
-	ioworkers.clear();
+	ioWorkers.clear();
     }
     
     void Queue(rados_ioctx_t ioctx, ceph_proxy_op_t op, completion_t c) {

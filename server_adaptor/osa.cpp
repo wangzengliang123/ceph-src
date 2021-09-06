@@ -35,7 +35,7 @@ int rpc_init()
         }
 
 	cls = nullptr;
-	ret = rpc_handler->open_class(string("lock", &cls);
+	ret = rpc_handler->open_class(string("lock"), &cls);
 	if (ret) {
 	   Salog(LV_WARNING, LOG_TYPE, "open cls_lock failed");
 	   return ret;
@@ -89,7 +89,7 @@ int OSA_InitExt(void *ophandler, uint32_t ptNum, uint32_t clusterTotalPtNum, std
     }
    
     uint32_t msgrAmount = GetMsgrAmount();
-    if (msgrAmount > 16 || msgrAmount < 4) {
+    if (msgrAmount > 16 || msgrAmount < 3) {
 	Salog(LV_CRITICAL, LOG_TYPE, "error : msgrAmount number is %d", msgrAmount);
  	return ERROR_PORT;
     }
@@ -97,7 +97,7 @@ int OSA_InitExt(void *ophandler, uint32_t ptNum, uint32_t clusterTotalPtNum, std
     sprintf(szMsgrAmount, "%d", msgrAmount);
     Salog(LV_INFORMATION, LOG_TYPE, " Server adaptor init coreNumber=%d queueAmount=%d szMsgrAmount=%s", coreNumber, queueAmount, szMsgrAmount);
     vector<const char *> args;
-    map<string, string> defaults = { { "ms_saync_op_threads", szMsgrAmount } };
+    map<string, string> defaults = { { "ms_async_op_threads", szMsgrAmount } };
     static auto cct = global_init(&defaults, args, 0xFF /* 0xFF CEPH_ENTITY_TYPE_ANY */,
     CODE_ENVIRONMENT_LIBRARY /*CODE_ENVIRONMENT_LIBRARY CODE_ENVIRONMENT_DAEMON */,
     CINIT_FLAG_NO_DEFAULT_CONFIG_FILE);
@@ -127,7 +127,7 @@ int OSA_InitExt(void *ophandler, uint32_t ptNum, uint32_t clusterTotalPtNum, std
 	string sAddr = rAddr;
         string sPort = rPort;
 	string testMode = "0";
-	Salog(LV_INFORMATION, LOG_TYPE, "Server adaptor init rAddr=%s rPort=%s sAddr=%s sPort==%s testMode =%s" ,
+	Salog(LV_INFORMATION, LOG_TYPE, "Server adaptor init rAddr=%s rPort=%s sAddr=%s sPort==%s testmode =%s" ,
 	rAddr.c_str(),rPort.c_str(), sAddr.c_str(), sPort.c_str(), testMode.c_str());
 	if (rAddr == "" || rPort == "") {
 	    Salog(LV_CRITICAL, LOG_TYPE, "error : Server adaptor Listen ip:port is empty.");
@@ -223,13 +223,13 @@ void OSA_SetOpResult(int i, int32_t ret, void *p)
 void OSA_EncodeXattrGetxattr(const SaBatchKv *keyValue, int i, void *p)
 {
     MOSDOp *ptr = (MOSDOp *)(p);
-    EncodeXattrGetxattr(keyValue, i, ptr);
+    EncodeXattrGetXattr(keyValue, i, ptr);
 }
 
 void OSA_EncodeXattrGetxattrs(const SaBatchKv *keyValue, int i, void *p)
 {
     MOSDOp *ptr = (MOSDOp *)(p);
-    EncodeXattrGetxattrs(keyValue, i, ptr);
+    EncodeXattrGetXattrs(keyValue, i, ptr);
 }
 
 void OSA_EncodeGetOpstat(uint64_t psize, time_t ptime, int i, void *p)
@@ -240,7 +240,7 @@ void OSA_EncodeGetOpstat(uint64_t psize, time_t ptime, int i, void *p)
 
 int OSA_ExecClass(SaOpContext *pctx, PREFETCH_FUNC prefetch)
 {
-    struct SaOpReq * pOpReq = pctx->OpReq;
+    struct SaOpReq * pOpReq = pctx->opReq;
     MOSDOp *ptr = reinterpret_cast<MOSDOp *>(pOpReq->ptrMosdop);
     OSDOp &clientop = ptr->ops[pctx->opId];
     string cname, mname;
@@ -263,13 +263,18 @@ int OSA_ExecClass(SaOpContext *pctx, PREFETCH_FUNC prefetch)
 	OpRequestOps &osdop = pOpReq->vecOps[pctx->opId];
 
 	osdop.objOffset = offset;
-	osdop.objLength = len'
+	osdop.objLength = len;
 	return prefetch(pOpReq, &osdop);
     }
 
     ClassHandler::ClassData *cls;
     int ret = rpc_handler->open_class(cname, &cls);
     if ( ret) {
+	Salog(LV_ERROR,LOG_TYPE, "can't open class [%s] ret [%d]", cname, ret);
+	return -EOPNOTSUPP;
+    }
+    ClassHandler::ClassMethod *method = cls->get_method(mname.c_str());
+    if (!method) {
 	Salog(LV_ERROR,LOG_TYPE, "can't find class [%s] + method[%s]", cname, mname);
 	return -EOPNOTSUPP;
     }

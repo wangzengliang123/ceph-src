@@ -70,7 +70,7 @@ int RadosCreateIoCtx2(rados_client_t client, const int64_t poolId,rados_ioctx_t 
 void RadosReleaseIoCtx(rados_ioctx_t ctx)
 {
 	if(ctx != nullptr){
-	librados::IoCtx *ioctx = reinterpret_cast<librados::Ioctx *>(ctx);
+	librados::IoCtx *ioctx = reinterpret_cast<librados::IoCtx *>(ctx);
 	delete ioctx;
 	ctx = nullptr;
 	}
@@ -98,6 +98,7 @@ int RadosGetClusterStat(rados_client_t client,CephClusterStat *stat)
 
 	stat->kb = result.kb;
 	stat->kb_avail = result.kb_avail;
+	stat->kb_used = result.kb_used;
 	stat->num_objects = result.num_objects;
 
 	return 0;
@@ -141,12 +142,18 @@ int RadosGetPoolStat(rados_client_t client,rados_ioctx_t ctx,CephPoolStat *stat)
 	return 0;
 }
 
+rados_op_t RadosWriteOpInit2(const string& pool, const string &oid)
+{
+	RadosObjectWriteOp *writeOp = new RadosObjectWriteOp(pool,oid);	
+	rados_op_t op = reinterpret_cast<void *>(writeOp);
+	return op;
+}	
+
 rados_op_t RadosWriteOpInit2(const int64_t poolId, const string &oid)
 {
 	RadosObjectOperation *writeOp = new RadosObjectWriteOp(poolId,oid);	
 	rados_op_t op = reinterpret_cast<void *>(writeOp);
 	return op;
-	
 }
 
 void RadosWriteOpRelease(rados_op_t op)
@@ -199,7 +206,7 @@ void RadosWriteOpOmapCmp(rados_op_t op,const char *key,uint8_t compOperator,
 {
 	RadosObjectWriteOp*writeOp = reinterpret_cast<RadosObjectWriteOp*>(op);
 	bufferlist bl;
-	b1.append(value,valLen);
+	bl.append(value,valLen);
 	std::map<std::string,pair<bufferlist,int>> assertions;
 	std::string lkey = string(key,strlen(key));
 	writeOp->op.omap_cmp(assertions,prval);
@@ -209,11 +216,17 @@ void RadosWriteOpSetXattr(rados_op_t op,const char *name,const char *value,size_
 {
 	RadosObjectWriteOp*writeOp = reinterpret_cast<RadosObjectWriteOp*>(op);
 	bufferlist bl;
-	b1.append(value,valLen);
+	bl.append(value,valLen);
 	writeOp->op.setxattr(name,bl);
 }
 
 void RadosWriteOpRemoveXattr(rados_op_t op,const char *name)
+{
+	RadosObjectWriteOp*writeOp = reinterpret_cast<RadosObjectWriteOp*>(op);
+	writeOp->op.rmxattr(name);
+}
+
+void RadosWriteOpCreateObject(rados_op_t op, int exclusive, const char *category)
 {
 	RadosObjectWriteOp*writeOp = reinterpret_cast<RadosObjectWriteOp*>(op);
 	writeOp->op.create(!!exclusive);
@@ -292,13 +305,13 @@ void RadosWriteOpWriteSameSGL(rados_op_t op,const SGL_S *s,size_t dataLen,
 	uint32_t leftLen = dataLen;
 	uint32_t curSrcEntryIndex = 0;
 	while(leftLen>0){
-	size_t size = std::min(sgl->entrys[curSrcEntryIndex].len,leftLen);
+	size_t size = std::min(s->entrys[curSrcEntryIndex].len,leftLen);
 	bl.append(s->entrys[curSrcEntryIndex].buf,size);
 	leftLen -= size;
 	curSrcEntryIndex++;
 	if(curSrcEntryIndex >= s->entrySumInSgl) {
 	curSrcEntryIndex = 0;
-	sgl = sgl->nextSgl;		
+	s = s->nextSgl;		
 	}
     }
 	writeOp->op.writesame(off,writeLen,bl);
@@ -334,19 +347,19 @@ void RadosWriteOpAppendSGL(rados_op_t op,const SGL_S *s,size_t len)
 void RadosWriteOpRemove(rados_op_t op)
 {
 	RadosObjectWriteOp *writeOp = reinterpret_cast<RadosObjectWriteOp*>(op);
-	writeop->op.remove();
+	writeOp->op.remove();
 }
 
 void RadosWriteOpTruncate(rados_op_t op,uint64_t off)	
 {
 	RadosObjectWriteOp *writeOp = reinterpret_cast<RadosObjectWriteOp*>(op);
-	writeop->op.truncate(off);
+	writeOp->op.truncate(off);
 }
 
 void RadosWriteOpZero(rados_op_t op,uint64_t off,uint64_t len)
 {
 	RadosObjectWriteOp *writeOp = reinterpret_cast<RadosObjectWriteOp*>(op);
-	writeop->op.zero(off,len);
+	writeOp->op.zero(off,len);
 }
 
 void RadosWriteOpOmapSet(rados_op_t op,const char *const *keys,
@@ -360,43 +373,43 @@ void RadosWriteOpOmapSet(rados_op_t op,const char *const *keys,
 	entries[keys[i]] = bl;
 	}
 	
-	writeop->op.omap_set(entries);	
+	writeOp->op.omap_set(entries);	
 }
 
 void RadosWriteOpOmapRmKeys(rados_op_t op,const char *const *keys,size_t keysLen)
 {
 	RadosObjectWriteOp *writeOp = reinterpret_cast<RadosObjectWriteOp*>(op);
 	std::set<std::string> to_remove(keys,keys + keysLen);	
-	writeop->op.omap_rm_keys(to_remove);
+	writeOp->op.omap_rm_keys(to_remove);
 }
 
 void RadosWriteOpOmapClear(rados_op_t op)
 {
 	RadosObjectWriteOp *writeOp = reinterpret_cast<RadosObjectWriteOp*>(op);
-	writeop->op.omap_clear();
+	writeOp->op.omap_clear();
 }
 
 void RadosWriteOpSetAllocHint(rados_op_t op,uint64_t expectedObjSize,uint64_t expectedWriteSize,uint32_t flags)
 {
 	RadosObjectWriteOp *writeOp = reinterpret_cast<RadosObjectWriteOp*>(op);
-	writeop->op.set_alloc_hint2(expectedObjSize,expectedWriteSize,flags);
+	writeOp->op.set_alloc_hint2(expectedObjSize,expectedWriteSize,flags);
 }
 
 rados_op_t RadosReadOpInit(const string& pool,const string &oid)
 {
 	RadosObjectReadOp *readOp = new RadosObjectReadOp(pool,oid);
 	rados_op_t op = reinterpret_cast<void *>(readOp);
-	return op
+	return op;
 }
 
 rados_op_t RadosReadOpInit2(const int64_t poolId,const string &oid)
 {
-	RadosObjectReadOp*readOp=newRadosObjectReadOp(pool,oid);
+	RadosObjectReadOp*readOp = new RadosObjectReadOp(poolId,oid);
 	rados_op_t op = reinterpret_cast<void*>(readOp);
 	return op;
 }
 
-void RadosReadOpRease(rados_op_t op)
+void RadosReadOpRelease(rados_op_t op)
 {
 	if (op != nullptr){
 	RadosObjectReadOp *readOp= reinterpret_cast<RadosObjectReadOp *>(op);
@@ -409,6 +422,12 @@ void RadosReadOpSetFlags(rados_op_t op,int flags)
 {
 	RadosObjectReadOp *readOp=reinterpret_cast<RadosObjectReadOp*>(op);
 	readOp->op.set_op_flags2(flags);
+}
+
+void RadosReadOpAssertExists(rados_op_t op)
+{
+	RadosObjectReadOp *readOp=reinterpret_cast<RadosObjectReadOp*>(op);
+	readOp->op.assert_exists();
 }
 
 void RadosReadOpAssertVersion(rados_op_t op,uint64_t ver)
@@ -435,7 +454,7 @@ void RadosReadOpCmpXattr(rados_op_t op,const char *name,uint8_t compOperator,
 	readOp->op.cmpxattr(name,compOperator,bl);
 }
 
-void RadosReadOpGetXattr(rados_op_t op,proxy_xattrs_iter_t *iter,int *prval)
+void RadosReadOpGetXattr(rados_op_t op,const char *name, char **val, int *prval)
 {
 	RadosObjectReadOp *readOp=reinterpret_cast<RadosObjectReadOp*>(op);
 	readOp->reqCtx.xattr.vals = val;
@@ -453,7 +472,7 @@ void RadosReadOpGetXattrs(rados_op_t op,proxy_xattrs_iter_t *iter,int *prval)
 	*iter = xIter;
 }
 
-int adosReadOpGetXattrsNext(proxy_xattrs_iter_t iter,const char **name,const char **val,size_t *len)
+int RadosGetXattrsNext(proxy_xattrs_iter_t iter,const char **name,const char **val,size_t *len)
 {
 	RadosXattrsIter *it = static_cast<RadosXattrsIter*>(iter);
 	if(it->val){
@@ -463,10 +482,8 @@ int adosReadOpGetXattrsNext(proxy_xattrs_iter_t iter,const char **name,const cha
 	
 	if (it->i == it->attrset.end()){
 	*name = nullptr;
-	}
-	if (it->i == it->attrset.end()){
-	*name = nullptr;
 	*val = nullptr;
+	*len = 0;
 	return 0;
 	}
 
@@ -507,7 +524,19 @@ void RadosReadOpOmapGetVals(rados_op_t op, const char *startAfter,
 	*iter = oIter;
 }
 
-int RadosOmapGetNext(proxy_iter_t iter, char **key, char **val, size_t *keyLen, size_t *valLen)
+void RadosReadOpOmapGetKeys(rados_op_t op, const char *startAfter, uint64_t maxReturn,
+				proxy_omap_iter_t *iter, unsigned char *pmore, int *prval)
+{
+	RadosObjectReadOp *readOp = reinterpret_cast<RadosObjectReadOp *>(op);
+	RadosOmapIter *oIter = new RadosOmapIter();
+	const char *start = startAfter ? startAfter : "";
+	readOp->reqCtx.omap.iter = oIter;
+	readOp->op.omap_get_keys2(start, maxReturn, &(oIter->values), (bool *)pmore, prval);
+	*iter = oIter;
+}
+:w
+
+int RadosOmapGetNext(proxy_omap_iter_t iter, char **key, char **val, size_t *keyLen, size_t *valLen)
 {
     RadosOmapIter *it = static_cast<RadosOmapIter *>(iter);
     if (it->i == it->values.end()) {
@@ -552,7 +581,7 @@ size_t RadosOmapIterSize(proxy_omap_iter_t iter) {
     return it->values.size();
 }
 
-void RadosOmapIterEnd(proxy_omap-iter_t iter)
+void RadosOmapIterEnd(proxy_omap_iter_t iter)
 {
     RadosOmapIter *it = static_cast<RadosOmapIter *>(iter);
     delete it;
@@ -561,11 +590,11 @@ void RadosOmapIterEnd(proxy_omap-iter_t iter)
 void RadosReadOpOmapCmp(rados_op_t op, const char *key, uint8_t compOperator,
 			const char *val, size_t valLen, int *prval)
 {
-    RadosObjectReadOp *readOp = reinterpret_cast<RadosobjectReadOp *>(op);
+    RadosObjectReadOp *readOp = reinterpret_cast<RadosObjectReadOp *>(op);
     bufferlist bl;
     bl.append(val, valLen);
     std::map<std::string, pair<bufferlist, int>> assertions;
-    strinf lkey = string(key,strlen(key));
+    string lkey = string(key,strlen(key));
 
     assertions[lkey] = std::make_pair(bl, compOperator);
     readOp->op.omap_cmp(assertions, prval);
@@ -573,26 +602,26 @@ void RadosReadOpOmapCmp(rados_op_t op, const char *key, uint8_t compOperator,
 
 void RadosReadOpStat(rados_op_top, uint64_t *psize, time_t *pmtime, int *prval)
 {
-    RadosObjectReadOp *readOp = reinterpret_cast<RadosobjectReadOp *>(op);
+    RadosObjectReadOp *readOp = reinterpret_cast<RadosObjectReadOp *>(op);
     readOp->op.stat(psize, pmtime, prval);
 }
 
 void RadosReadOpRead(rados_op_t op, uint64_t offset, size_t len, char *buffer,
 			size_t *bytesRead, int *prval)
 {
-    RadosObjectReadOp *readOp = reinterpret_cast<RadosobjectReadOp *>(op);
+    RadosObjectReadOp *readOp = reinterpret_cast<RadosObjectReadOp *>(op);
     readOp->reqCtx.read.buffer = buffer;
     readOp->reqCtx.read.bytesRead = bytesRead;
 
-    readop->op.read(offset, len, &(readOp->results), prval);
+    readOp->op.read(offset, len, &(readOp->results), prval);
 }
 
-void RadosReadOpRead(rados_op_t op, uint64_t offset,size_t len, SGL_L *sgl, int *prval)
+void RadosReadOpReadSGL(rados_op_t op, uint64_t offset,size_t len, SGL_S *sgl, int *prval)
 {
-    RadosObjectReadOp *readOp = reinterpret_cast<RadosobjectReadOp *>(op);
+    RadosObjectReadOp *readOp = reinterpret_cast<RadosObjectReadOp *>(op);
     readOp->reqCtx.readSgl.sgl = sgl;
 
-    readop->op.read(offset, len, &(readOp->results), prval);
+    readOp->op.read(offset, len, &(readOp->results), prval);
 }
 
 void RadosReadOpCheckSum(rados_op_t op, proxy_checksum_type_t type,
@@ -601,42 +630,42 @@ void RadosReadOpCheckSum(rados_op_t op, proxy_checksum_type_t type,
 			char *pCheckSum, size_t checkSumLen, int *prval)
 {
     rados_checksum_type_t  rtype = (rados_checksum_type_t)type;
-    RadosObjectReadOp *readOp = reinterpret_cast<RadosobjectReadOp *>(op);
+    RadosObjectReadOp *readOp = reinterpret_cast<RadosObjectReadOp *>(op);
     bufferlist bl;
     bl.append(initValue, initValueLen);
     readOp->reqCtx.checksum.pCheckSum = pCheckSum;
     readOp->reqCtx.checksum.chunkSumLen = checkSumLen;
-    readOp->op.checksum(rtype, bl, offset, len, chunkSize, &(readop->checksums), prval);
+    readOp->op.checksum(rtype, bl, offset, len, chunkSize, &(readOp->checksums), prval);
 }
 
 void RadosReadOpExec(rados_op_t op, const char *cls, const char *method,
 			const char *inBuf, size_t inLen, char **outBuf,
 			size_t *outLen, int *prval)
 {
-    RadosObjectReadOp *readOp = reinterpret_cast<RadosobjectReadOp *>(op);
+    RadosObjectReadOp *readOp = reinterpret_cast<RadosObjectReadOp *>(op);
     bufferlist inbl;
     inbl.append(inBuf, inLen);
 
     readOp->reqCtx.exec.outBuf = outBuf;
     readOp->reqCtx.exec.outLen = outLen;
-    readOp->op.exec(cls, method, inbl, &(radop->execOut),prval);
+    readOp->op.exec(cls, method, inbl, &(readOp->execOut),prval);
 }
 
 int RadosOperationOperate(rados_op_t op, rados_ioctx_t io)
 {
-    RadosObjectReadOp *readOp = reinterpret_cast<RadosobjectReadOp *>(op);
+    RadosObjectOperate *rop = reinterpret_cast<RadosObjectOperate *>(op);
     librados::IoCtx *ctx =  reinterpret_cast<librados::IoCtx *>(io);
     int ret = 0;
     switch(rop->opType) {
 	case BATCH_READ_OP: {
-        RadosObjectReadOp *readOp = dynamic_cast<RadosobjectReadOp *>(rop);
+        RadosObjectReadOp *readOp = dynamic_cast<RadosObjectReadOp *>(rop);
 	bufferlist bl;
         ret = ctx->operate(readOp->objectId, &(readOp->op), &bl);
 	}
         break;
-	case BATCH_READ_OP: {
+	case BATCH_WRITE_OP: {
         RadosObjectWriteOp *writeOp = dynamic_cast<RadosobjectWriteOp *>(rop);
-        ret = ctx->operate(writeOp->objectId, &(writeOp->op), &bl);
+        ret = ctx->operate(writeOp->objectId, &(writeOp->op));
         }
 	break;
 	default:
@@ -648,9 +677,10 @@ int RadosOperationOperate(rados_op_t op, rados_ioctx_t io)
 
 void ReadCallback(librados::completion_t comp, void *arg)
 {
-    RadosObjectReadOp *readOp = (RadosobjectReadOp *)arg;
+    RadosObjectReadOp *readOp = (RadosObjectReadOp *)arg;
     if (readOp_results.length() > 0) {
-	if(readOp->reqCtx.read.buffer, readOp->results.c_str(), readOp->results.length());
+	if (readOp->reqCtx.read.buffer != nullptr) {   
+	memcpy(readOp->reqCtx.read.buffer, readOp->results.c_str(), readOp->results.length());
 	} else if (readOp->reqCtx.readSgl.sgl != nullptr) {
 	    size_t len = readOp->results.length();
 	    uint32_t leftLen = len;
@@ -658,7 +688,7 @@ void ReadCallback(librados::completion_t comp, void *arg)
 	    uint64_t offset = 0;
 	    SGL_S *sgl = readOp->reqCtx.readSgl.sgl;
   
- 	    while (leftlen > 0) {
+ 	    while (leftLen > 0) {
 		size_t size = std::min(leftLen, sgl->entrys[curEntryIndex].len);
 		bufferlist bl;
 		bl.substr_of(readOp->results, offset, size);
@@ -681,7 +711,7 @@ void ReadCallback(librados::completion_t comp, void *arg)
 		readOp->xattrs[readOp->reqCtx.xattr.name].length());
     }
    
-    if (readOp->reqCtx.xattr.iter != nullptr) {
+    if (readOp->reqCtx.xattrs.iter != nullptr) {
 	RadosXattrsIter *iter = static_cast<RadosXattrsIter*>(readOp->reqCtx.xattrs.iter);
 	iter->i = iter->attrset.begin();
     }
@@ -699,7 +729,7 @@ void ReadCallback(librados::completion_t comp, void *arg)
     if (readOp->reqCtx.checksum.pCheckSum != nullptr) {
 	memcpy(readOp->reqCtx.checksum.pCheckSum,
 		readOp->checksums.c_str(),
-		readOp->reqCtx.checksum.chunkSumlen);
+		readOp->reqCtx.checksum.chunkSumLen);
     }
 
     int ret = rados_aio_get_return_value(comp);
@@ -715,7 +745,7 @@ void WriteCallback(librados::completion_t comp, void *arg)
 int RadosOperationAioOperate( rados_client_t client, rados_op_t op, rados_ioctx_t io, userCallback_t fn, void *cbArg)
 {
 	librados::Rados *rados = reinterpret_cast<librados::Rados *>(client);
-	RadosObjectOperation *rop = reinterpret_cast<RadosObjectOperation>(op);
+	RadosObjectOperation *rop = reinterpret_cast<RadosObjectOperation *>(op);
 	librados::IoCtx *ctx = reinterpret_cast<librados::IoCtx*>(io);
 	int ret = 0;
 	switch (rop->opType) {
@@ -723,10 +753,10 @@ int RadosOperationAioOperate( rados_client_t client, rados_op_t op, rados_ioctx_
 	    RadosObjectReadOp *readOp = dynamic_cast< RadosObjectReadOp *>(rop);
 	    readOp->callback = fn;
 	    readOp->cbArg = cbArg;
-	   librados::AioCompletion *completion = rados->aio_crate_completion(readOp, NULL, ReadCallback);
+	   librados::AioCompletion *completion = rados->aio_create_completion(readOp, NULL, ReadCallback);
 	    ret = ctx->aio_operate(readOp->objectId, completion, &(readOp->op), &(readOp->bl));
 	    if (ret !=0) {
-	        std::cerr << "aio_operate failed :" << ret << std::endl;
+	        std::cerr << "aio_operate failed: " << ret << std::endl;
 		}
 	    completion->release();
 	}
@@ -735,16 +765,16 @@ int RadosOperationAioOperate( rados_client_t client, rados_op_t op, rados_ioctx_
 	    RadosObjectWriteOp *writeOp = dynamic_cast<RadosObjectWriteOp *>(rop);
 	    writeOp->callback = fn;
 	    writeOp->cbArg = cbArg;
-	    librados::AioCompletion *completion = rados->aio_crate_completion(writeOp, NULL, WriteCallback);
+	    librados::AioCompletion *completion = rados->aio_create_completion(writeOp, NULL, WriteCallback);
 
-	    ret=ctx->aio_operate(readOp->objectId, completion, &(writeOp->op));
+	    ret=ctx->aio_operate(writeOp->objectId, completion, &(writeOp->op));
 	    if(ret!=0){
-		std::cerr<<"aio_operate failed :"<< ret << std::endl;
+		std::cerr<<"aio_operate failed: "<< ret << std::endl;
 	    }
 	    completion->release();
 	    }
 	    break;
-	    default;
+	    default:
 	    break;
 	}
 	return ret;

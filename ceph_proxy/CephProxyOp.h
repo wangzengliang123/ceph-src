@@ -71,7 +71,7 @@ public:
 
     }
 
-    RadosObjectOperation(CephProxyOpType _type, int64_t poolId, const string &oid):
+    RadosObjectOperation(CephProxyOpType _type, int64_t _poolId, const string &oid):
         opType(_type), poolId(_poolId), poolName(""), objectId(oid) {
 
     }
@@ -83,7 +83,7 @@ public:
 
 class RadosObjectReadOp : public RadosObjectOperation {
 public:
-    librados::RadosObjectOperation op;
+    librados::ObjectReadOperation op;
 
     struct reqContext {
         struct _read {
@@ -115,7 +115,7 @@ public:
 
         struct _exec {
             char **outBuf = nullptr;
-            size_t *outlen;
+            size_t *outLen;
         } exec;
     }reqCtx;
     
@@ -130,7 +130,7 @@ public:
     bufferlist execOut;
     int execOutRetVals;
 
-    set<string> omapkeys;
+    set<string> omapKeys;
     map<string, bufferlist> omap;
     bufferlist header;
 
@@ -151,18 +151,18 @@ public:
     }
 };
 
-class RadosObjectWriteOp : RadosObjectOperation {
+class RadosObjectWriteOp : public RadosObjectOperation {
 public:
     librados::ObjectWriteOperation op;
 
 public:
     RadosObjectWriteOp(const string& pool, const string& oid)
-      : RadosObjectOperation(BATCH_READ_OP, pool, oid) {
+      : RadosObjectOperation(BATCH_WRITE_OP, pool, oid) {
 
     }
 
     RadosObjectWriteOp(const int64_t poolId, const string &oid)
-      : RadosObjectOperation(BATCH_READ_OP, poolId, oid) {
+      : RadosObjectOperation(BATCH_WRITE_OP, poolId, oid) {
 
     }
     ~RadosObjectWriteOp() {
@@ -183,7 +183,7 @@ public:
     }
 };
 
-    completion_t CompetionInit(userCallback_t fn, void *cbArg);
+    completion_t CompletionInit(userCallback_t fn, void *cbArg);
     void CompletionDestroy(completion_t c);
 
 #endif

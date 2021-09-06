@@ -12,10 +12,10 @@
 #include "sa_def.h"
 
 enum LogLevel {
-    LV_CRITICAL = 0;
-    LV_ERROR = 1;
-    LV_WARNING = 2;
-    LV_INFORMATION = 3;
+    LV_CRITICAL = 0,
+    LV_ERROR = 1,
+    LV_WARNING = 2,
+    LV_INFORMATION = 3,
     LV_DEBUG = 4
 };
 
@@ -23,7 +23,7 @@ namespace {
 const std::string MAIN = "SA" ;
 const std::string OPHANDLER = "OPHANDLER";
 const std::string NETWORK = "NETWORK";
-const std::string MSG = "MSG"
+const std::string MSG = "MSG";
 }
 
 #define Salog(level, subModule, format, ...)      \

@@ -55,11 +55,11 @@ int NetworkModule::InitNetworkModule(const std::string &rAddr, const std::string
     recvAddr = rAddr;
     recvPort = rPort;
     sendAddr = sAddr;
-    sendPort = sPort;
+    sednPort = sPort;
 
     ret = InitMessenger();
     if (ret) {
-        Salog(LV_DEBUG, LOG_TYPE, "error : init messenger ret is %d", ret);
+        Salog(LV_DEBUG, LOG_TYPE, "error : Init messenger ret is %d", ret);
         return ret;
     }
     return ret;
@@ -100,7 +100,7 @@ int NetworkModule::FinishMessenger()
         clientMessenger->shutdown();
         clientMessenger->wait();
     }
-    Salog(LV_INFORMATION, LOG_TYPE, "Wait finishMessenger finish.");
+    Salog(LV_INFORMATION, LOG_TYPE, "Wait serverThread finish.");
     pthread_join(serverThread, nullptr);
     Salog(LV_INFORMATION, LOG_TYPE, "FinishMessenger ret=%d", ret);
     return ret;
@@ -110,7 +110,7 @@ int NetworkModule::ThreadFuncBodyServer()
 {
     entity_addr_t bind_addr;
     int r = 0;
-    Salog(LV_WARNING, LOG_TYPE, "Server messenger is starting... %s:%s", recvAddr.c_str(), recvPort.c_str());
+    Salog(LV_WARNING, LOG_TYPE, "Server messanger is starting... %s:%s", recvAddr.c_str(), recvPort.c_str());
 
     string dest_str = "tcp://";
     dest_str += recvAddr;
@@ -119,7 +119,7 @@ int NetworkModule::ThreadFuncBodyServer()
     entity_addr_from_url(&bind_addr, dest_str.c_str());
     Salog(LV_WARNING, LOG_TYPE, "Messenger type is %s", g_conf().get_val<std::string>("ms_type").c_str());
     // async+posix
-    serverMessenger = Messenger::create(g_ceph_context, g_conf.get_val<std::string>("ms_type"),
+    serverMessenger = Messenger::create(g_ceph_context, g_conf().get_val<std::string>("ms_type"),
         entity_name_t::OSD(-1), "simple_server", 0 /*nonce */, 0 /* flags */);
 
     DummyAuthClientServer dummy_auth(g_ceph_context);
@@ -130,7 +130,7 @@ int NetworkModule::ThreadFuncBodyServer()
     bind_addr.set_type(entity_addr_t::TYPE_MSGR2);
     r = serverMessenger->bind(bind_addr);
     if (r < 0)
-        goto out:
+        goto out;
 
     common_init_finish(g_ceph_context);
 
@@ -139,7 +139,7 @@ int NetworkModule::ThreadFuncBodyServer()
 
     serverMessenger->add_dispatcher_head(serverDispatcher);
     serverMessenger->start();
-    Salog(LV_WARNING, LOG_TYPE, "ServerMessenger wait.");
+    Salog(LV_WARNING, LOG_TYPE, "ServerMessenger wait");
     serverMessenger->wait();
 out:
     Salog(LV_WARNING, LOG_TYPE, "Server exit");
@@ -155,20 +155,20 @@ int NetworkModule::ThreadFuncBodyClient()
 
     struct timespec ts;
     ts.tv_sec = 1;
-    ts_tv_nsec = 0;
+    ts.tv_nsec = 0;
     cout << "ThreadFuncBodyClient starting "
          << "dest sendAddr " << sendAddr << " "
-         << "dest sendPort " << sendPort << " "
+         << "dest sednPort " << sednPort << " "
          << "initial msgs (pipe depth) " << n_msgs << " "
          << "data buffer size " << n_dsize << std::endl;
     cout << "ThreadFuncBodyClient ms_type=" << g_conf().get_val<std::string>("ms_type") << std::endl;
-    clientMessenger = Messenger::create(g_conf_context, g_conf().get_val<std::string>("ms_type"),
+    clientMessenger = Messenger::create(g_ceph_context, g_conf().get_val<std::string>("ms_type"),
         entity_name_t::CLIENT(-1), "client", getpid(), 0);
 
-    DummyAuthClientServer dummy_auth(g_conf_context);
+    DummyAuthClientServer dummy_auth(g_ceph_context);
     clientMessenger->set_auth_client(&dummy_auth);
     clientMessenger->set_magic(MSG_MAGIC_TRACE_CTR);
-    clientMessenger->set_default_policy(Messenger::Policy::;ossy_client(0));
+    clientMessenger->set_default_policy(Messenger::Policy::ossy_client(0));
 
 
     clientDispatcher = new SaClientDispatcher(clientMessenger, ptrMsgModule);
@@ -189,8 +189,8 @@ int NetworkModule::ThreadFuncBodyClient()
         string dest_str = "tcp://";
         dest_str += sendAddr;
         dest_str += ":";
-        dest_str += sendPort;
-        entity_addrvec_t dest_addrs(dest_addr);
+        dest_str += sednPort;
+        entity_addr_from_url(&dest_addr, dest_str.c_str());
         dest_addr.set_type(entity_addr_t::TYPE_MSGR2);
         entity_addrvec_t dest_addrs(dest_addr);
         conn = clientMessenger->connect_to_osd(dest_addrs);
@@ -218,7 +218,7 @@ int NetworkModule::ThreadFuncBodyClient()
                 object_t oid("object-name");
                 object_locator_t oloc(1, 1);
                 pg_t pgid;
-                hobject_t hobj(oid, oloc.key, CEPH_NOSHAP, pgid.ps(), pgid.pool(), oloc.nspace);
+                hobject_t hobj(oid, oloc.key, CEPH_NOSNAP, pgid.ps(), pgid.pool(), oloc.nspace);
 
                 spg_t spgid(pgid);
 
@@ -255,7 +255,7 @@ void NetworkModule::TestSimulateClient(bool ping, bool mosdop)
 }
 void *ThreadFunc(NetworkModule *arg, int threadNum, int coreId)
 {
-    arg->OpHandleThread(threadNum, coreId);
+    arg->OpHandlerThread(threadNum, coreId);
     return nullptr;
 }
 
@@ -269,12 +269,12 @@ void NetworkModule::CreateWorkThread(uint32_t ptnum, uint32_t qnum, uint32_t clu
     queueNum = qnum;
     totalPtNum = clusterTotalPtNum;
     nodePtMap = localPtMap;
-    for (uint64_t i = 0; i < queueNum; i++ {
+    for (uint64_t i = 0; i < queueNum; i++) {
         finishThread.push_back(false);
         opDispatcher.push_back(new ClientOpQueue());
         doOpThread.push_back(thread(ThreadFunc, this, i, i % coreNumber));
     }
-    Salog(LV_DEBUG, LOG_TYPE, "CreateworkThread %d %d %d", ptNum, queueNum, totalPtNum.size());
+    Salog(LV_DEBUG, LOG_TYPE, "CreateWorkThread %d %d %d", ptNum, queueNum, totalPtNum, nodePtmap.size());
 }
 
 void NetworkModule::StopThread()
@@ -318,9 +318,9 @@ void NetworkModule::OpHandlerThread(int threadNum, int coreId)
     }
 
     int threadId = threadNum;
-    ClientOpQueue *opDispatch = opDispatcher(threadId);
+    ClientOpQueue *opDispatch = opDispatcher[threadId];
     std::unique_lock<std::mutex> opReqLock(opDispatch->opQueueMutex);
-    while (!finishThread(threadId)) {
+    while (!finishThread[threadId]) {
         if (!opDispatch->Empty()) {
             std::queue<MOSDOp *> dealQueue;
             opDispatch->reqQueue.swap(dealQueue);
@@ -379,7 +379,7 @@ void NetworkModule::OpHandlerThread(int threadNum, int coreId)
         }
         opDispatch->condOpReq.wait(opReqLock);
     }
-    Salog(LV_DEBUG, LOG_TYPE, "opHandler", "OpHandlerThread Finish");
+    Salog(LV_DEBUG, "OpHandler", "OpHandlerThread Finish");
 }
 
 uint32_t NetworkModule::EnqueueClientop(MOSDOp *opReq)
@@ -397,11 +397,11 @@ uint32_t NetworkModule::EnqueueClientop(MOSDOp *opReq)
         return ret;
     }
     std::unique_lock<std::mutex> opReqLock(opDispatcher[nodePtMap[ptId] % queueNum]->opQueueMutex);
-    opDispatcher[nodePtMap[ptId] % queueNum]->Enqueue(opReq);
+    opDispatcher[nodePtMap[ptId] % queueNum]->EnQueue(opReq);
     return ret;
 }
 
-void FinishCacheOps(void *(op, int32_t r)
+void FinishCacheOps(void *op, int32_t r)
 {
     MOSDOp *ptr = (MOSDOp *)(op);
     MOSDOpReply *reply = new MOSDOpReply(ptr, 0, 0, 0, false);
@@ -424,7 +424,7 @@ void ProcessBuf(const char *buf, uint32_t len, int cnt, void *p)
     encode(std::string_view(buf, len), ptr->ops[cnt].outdata);
 }
 
-void EncodeOmapGetkeys(const SabatchKeys *batchKeys, int i, MOSDOp *mosdop)
+void EncodeOmapGetkeys(const SaBatchKeys *batchKeys, int i, MOSDOp *mosdop)
 {
     bufferlist bl;
     for (uint32_t j = 0; j < batchKeys->nums; j++) {
@@ -432,12 +432,12 @@ void EncodeOmapGetkeys(const SabatchKeys *batchKeys, int i, MOSDOp *mosdop)
     }
     encode(batchKeys->nums, mosdop->ops[i].outdata);
     Salog(LV_DEBUG, LOG_TYPE, "CEPH_OSD_OP_OMAPGETKEYS get key num=%d", batchKeys->nums);
-    mosdop->ops[i].outdata,claim_append(bl);
+    mosdop->ops[i].outdata.claim_append(bl);
     // TODO
     encode(false, mosdop->ops[i].outdata);
 }
 
-void EncodeOmapGetvals(const SabatchKv *KVs, int i, MOSDOp *mosdop)
+void EncodeOmapGetvals(const SaBatchKv *KVs, int i, MOSDOp *mosdop)
 {
     bufferlist bl;
     Salog(LV_DEBUG, LOG_TYPE, "CEPH_OSD_OP_OMAPGETVALS get key num=%d", KVs->kvNum);
@@ -447,16 +447,16 @@ void EncodeOmapGetvals(const SabatchKv *KVs, int i, MOSDOp *mosdop)
             encode(std::string_view(KVs->keys[j].buf, KVs->keys[j].len), bl);
         }
         if (KVs->values[j].buf && KVs->values[j].len) {
-            Salog(LV_DEBUG, LOG_TYPE, "CEPH_OSD_OP_OMAPGETVALS get key KVs->values[j].buf=%s", KVs->values[j].buf);
+            Salog(LV_DEBUG, LOG_TYPE, "CEPH_OSD_OP_OMAPGETVALS get key KVs->values[j].buf=%s", KVs->keys[j].buf);
             encode(std::string_view(KVs->values[j].buf, KVs->values[j].len), bl);
         }
     }
     encode(KVs->kvNum, mosdop->ops[i].outdata);
-    modsop->ops[i].outdata.claim_append(bl);
+    mosdop->ops[i].outdata.claim_append(bl);
     encode(false, mosdop->ops[i].outdata);
 }
 
-void EncodeOmapGetvalsbykeys(const SabatchKv *keyValue, int i, MOSDOp *mosdop)
+void EncodeOmapGetvalsbykeys(const SaBatchKv *keyValue, int i, MOSDOp *mosdop)
 {
     map<string, bufferlist> out;
     for (uint32_t j = 0; j < keyValue->kvNum; j++) {
@@ -475,7 +475,7 @@ void EncodeRead(uint64_t opType, unsigned int offset, unsigned int len, char *bu
 {
     if (unlikely(opType == CEPH_OSD_OP_SPARSE_READ)) {
         std::map<uint64_t, uint64_t> extents;
-        extents(offset) = len;
+        extents[offset] = len;
         encode(extents, mosdop->ops[i].outdata);
         encode(std::string_view(buf, bufLen), mosdop->ops[i].outdata);
     } else {
@@ -483,16 +483,16 @@ void EncodeRead(uint64_t opType, unsigned int offset, unsigned int len, char *bu
     }
 }
 
-void EncodeXattrFetXattr(const SabatchKv *keyValue, int i, MOSDOp *mosdop)
+void EncodeXattrGetXattr(const SaBatchKv *keyValue, int i, MOSDOp *mosdop)
 {
-    mosdop->ops[i].outdata,clear();
+    mosdop->ops[i].outdata.clear();
     for (uint32_t j = 0; j < keyValue->kvNum; j++) {
         bufferptr ptr(keyValue->values[j].buf, keyValue->values[j].len);
-        mosdop->ops[i].outdata.psuah_back(std::move(ptr));
+        mosdop->ops[i].outdata.push_back(std::move(ptr));
     }
 }
 
-void ENcodeXattrGetXattrs(const SabatchKv *keyValue, int i, MOSDOp *mosdop)
+void EncodeXattrGetXattrs(const SaBatchKv *keyValue, int i, MOSDOp *mosdop)
 {
     map<string, bufferlist> out;
     bufferlist bl;

@@ -20,10 +20,13 @@ public:
     }
 
     ~IOCtxTable() {
+	pthread_spin_destroy(&lock);
+    }
+
+    int Init() {    
         pthread_spin_init(&lock, PTHREAD_PROCESS_SHARED);
         table1.clear();
         table2.clear();
-        return 0;
     }
 
     int Insert(const std::string &poolname, rados_ioctx_t ioctx) {
@@ -46,7 +49,7 @@ public:
 	if (iter != table2.end()) {
 	    ret = -1;
 	} else {
-	    table2[poolname] = ioctx;
+	    table2[poolId] = ioctx;
 	}
 	pthread_spin_unlock(&lock);
 	return ret;
@@ -98,11 +101,11 @@ public:
 	pthread_spin_lock(&lock);
 
         for (auto iter : table1) {
-	    RadosReleaseIoCtx(iter->second);
+	    RadosReleaseIoCtx(iter.second);
 	}
 
         for (auto iter : table2) {
-	    RadosReleaseIoCtx(iter->second);
+	    RadosReleaseIoCtx(iteri.second);
 	}
 
 	table1.clear();

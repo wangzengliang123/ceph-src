@@ -11,8 +11,8 @@
 #include <thread>
 #include <string>
 #include <vector>
-#include <message/MOSDOp.h>
-#include <message/MOSDOpReply.h>
+#include <messages/MOSDOp.h>
+#include <messages/MOSDOpReply.h>
 
 #include "sa_server_dispatcher.h"
 #include "sa_client_dispatcher.h"
@@ -42,7 +42,7 @@ class NetworkModule {
     std::string recvAddr { "localhost" };
     std::string recvPort { "1234" };
     std::string sendAddr { "localhost" };
-    std::string sendPort { "1234" };
+    std::string sednPort { "1234" };
 
     MsgModule *ptrMsgModule { nullptr };
     std::queue<MOSDOp *> qReadyTransToOpreq {};
@@ -106,13 +106,15 @@ public:
         return ptrMsgModule;
     }
     uint32_t EnqueueClientop(MOSDOp *opReq);
+
+    void TestSimulateClient(bool ping, bool mosdop);
 };
 
 void FinishCacheOps(void *op, int32_t r);
 void ProcessBuf(const char *buf, uint32_t len, int cnt, void *p);
 
 void EncodeOmapGetkeys(const SaBatchKeys *batchKeys, int i, MOSDOp *p);
-void EncodeOmapGetVals(const SaBatchKv *Kvs, int i, MOSDOp *mosdop);
+void EncodeOmapGetvals(const SaBatchKv *KVs, int i, MOSDOp *mosdop);
 void EncodeOmapGetvalsbykeys(const SaBatchKv *keyValue, int i, MOSDOp *mosdop);
 void EncodeRead(uint64_t opType, unsigned int offset, unsigned int len, char *buf, unsigned int bufLen, int i,
     MOSDOp *mosdop);

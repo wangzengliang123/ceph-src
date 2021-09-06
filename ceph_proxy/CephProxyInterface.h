@@ -4,14 +4,14 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <time.h>
-#include <sgl.h>
+#include "sgl.h"
 
-#ifdef __cplussplus
+#ifdef __cplusplus
 extern "C" {
 #endif
 
 #define CEPHPROXY_CREATE_EXCLUSIVE 1
-#define CEPHPROXY_CREATE_idempotent 0
+#define CEPHPROXY_CREATE_IDEMPOTENT 0
 
 #define POOL_NAME_MAX_LEN 128
 #define OBJECT_ID_MAX_LEN 128
@@ -19,13 +19,13 @@ extern "C" {
 
 enum {
     CEPHPROXY_OP_FLAG_EXCL                = 0x1,
-    CEPHPROXY_OP_FALG_FAILOK              = 0x2,
-    CEPHPROXY_OP_FALG_FADVISE_RANDOM      = 0x4,
-    CEPHPROXY_FALG_FADVISE_SEQUENTIAL     = 0x8,
-    CEPHPROXY_OP_FALG_FADVISE_WILLNEED    = 0x10,
-    CEPHPROXY_OP_FALG_FADVISE_DONTNEED    = 0x20,
-    CEPHPROXY_OP_FALG_FADVISE_NOCACHE     = 0x40,
-    CEPHPROXY_OP_FALG_FADVISE_FUA         = 0x80,
+    CEPHPROXY_OP_FLAG_FAILOK              = 0x2,
+    CEPHPROXY_OP_FLAG_FADVISE_RANDOM      = 0x4,
+    CEPHPROXY_FLAG_FADVISE_SEQUENTIAL     = 0x8,
+    CEPHPROXY_OP_FLAG_FADVISE_WILLNEED    = 0x10,
+    CEPHPROXY_OP_FLAG_FADVISE_DONTNEED    = 0x20,
+    CEPHPROXY_OP_FLAG_FADVISE_NOCACHE     = 0x40,
+    CEPHPROXY_OP_FLAG_FADVISE_FUA         = 0x80,
 };
 
 enum {
@@ -34,20 +34,20 @@ enum {
     CEPHPROXY_CMPXATTR_OP_GT              = 3,
     CEPHPROXY_CMPXATTR_OP_GTE             = 4,
     CEPHPROXY_CMPXATTR_OP_LT              = 5,
-    CEPHPROXY_CMPXATTR_OP_LTE             = 6,
+    CEPHPROXY_CMPXATTR_OP_LTE             = 6
 };
 
 enum {
     CEPHPROXY_OPERATION_NOFLAG                   = 0, 
     CEPHPROXY_OPERATION_BALANCE_READS            = 1, 
     CEPHPROXY_OPERATION_LOCALIZE_READS           = 2, 
-    CEPHPROXY_OPERATION_ORDER_READS_WRIRES       = 4, 
+    CEPHPROXY_OPERATION_ORDER_READS_WRITES       = 4, 
     CEPHPROXY_OPERATION_IGNORE_CACHE             = 8, 
     CEPHPROXY_OPERATION_SKIPRWLOCKS              = 16,
     CEPHPROXY_OPERATION_IGNORE_OVERLAY           = 32,
     CEPHPROXY_OPERATION_FULL_TRY                 = 64, 
     CEPHPROXY_OPERATION_FULL_FORCE               = 128, 
-    CEPHPROXY_OPERATION_IGNORE_REDIRRECT         = 256, 
+    CEPHPROXY_OPERATION_IGNORE_REDIRECT          = 256, 
     CEPHPROXY_OPERATION_ORDERSNAP                = 512, 
 };
 
@@ -77,9 +77,9 @@ typedef enum {
     PROXY_READ           =0x03,
     PROXY_ASYNC_WRITE    =0x04,
     PROXY_WRITE          =0x05,
-} CephProxyOpType;
+} CephProxyOpCode;
 
-#define CLIENT_OPERATE_SUCESS   0x00
+#define CLIENT_OPERATE_SUCCESS  0x00
 #define CLIENT_INIT_ERR         0x01
 #define CLIENT_READ_CONF_ERR    0x02
 #define CLIENT_CONNECT_ERR      0x03
@@ -102,7 +102,7 @@ typedef enum {
 
 typedef enum {
     BUFFER_INC = 0x01,
-    direct_INC = 0x02,
+    DIRECT_INC = 0x02,
 } CephProxyOpFrom;
 
 typedef enum {
@@ -113,7 +113,7 @@ typedef enum {
 
 typedef struct {
     uint64_t num_bytes;
-    uint64_t num_kv;
+    uint64_t num_kb;
     uint64_t num_objects;
     uint64_t num_object_clones;
     uint64_t num_object_copies;
@@ -125,9 +125,9 @@ typedef struct {
     uint64_t num_wr;
     uint64_t num_wr_kb;
     uint64_t num_user_bytes;
-    uint64_t num_compressed_bytes_orig;
-    uint64_t num_compressed_bytes;
-    uint64_t num_compressed_bytes_alloc;
+    uint64_t compressed_bytes_orig;
+    uint64_t compressed_bytes;
+    uint64_t compressed_bytes_alloc;
 } CephPoolStat;
 
 typedef struct {
@@ -151,15 +151,15 @@ int CephProxyInit(const char *conf, size_t wNum, const char *log, ceph_proxy_t *
 
 void CephProxyShutdown(ceph_proxy_t proxy);
 
-rados_ioctx_t CephproxyGetIoCtx(ceph_proxy_t proxy, const char *poolname);
+rados_ioctx_t CephProxyGetIoCtx(ceph_proxy_t proxy, const char *poolname);
  
-rados_ioctx_t CephproxyGetIoCtx2(ceph_proxy_t proxy, const int64_t poolId);
+rados_ioctx_t CephProxyGetIoCtx2(ceph_proxy_t proxy, const int64_t poolId);
 
 int CephProxyGetClusterStat(ceph_proxy_t proxy, CephClusterStat *result);
 
 int CephProxyGetPoolStat(ceph_proxy_t proxy, rados_ioctx_t ioctx, CephPoolStat *stats);
 
-void CephProxyQueueOp(ceph_proxy_t proxy,rados_ioctx_tioctx, ceph_proxy_op_t op, completio_t c);
+void CephProxyQueueOp(ceph_proxy_t proxy,rados_ioctx_tioctx, ceph_proxy_op_t op, completion_t c);
 
 int CephProxyWriteOpInit(ceph_proxy_op_t *op, const char *pool, const char* oid);
 
@@ -173,11 +173,11 @@ void CephProxyWriteOpAssertExists(ceph_proxy_op_t op);
 
 void CephProxyWriteOpAssertVersion(ceph_proxy_op_t op, uint64_t ver);
 
-void CephProxyWriteOpCmpext(ceph_proxy_op_t op, const char *cmpbuf, size_t cmpLen, uint64_t off, int *prval);
+void CephProxyWriteOpCmpext(ceph_proxy_op_t op, const char *cmpBuf, size_t cmpLen, uint64_t off, int *prval);
 
 void CephProxyWriteOpCmpXattr(ceph_proxy_op_t op,  const char *name, uint8_t compOperator, const char *value, size_t valLen);
 
-void CephProxyWriteOpOmapCmp(ceph_proxy_op_t op, const char *key, uint8_t compOperator, constchar *value, size_t valLen, int *prval);
+void CephProxyWriteOpOmapCmp(ceph_proxy_op_t op, const char *key, uint8_t compOperator, const char *value, size_t valLen, int *prval);
 
 void CephProxyWriteOpSetXattr(ceph_proxy_op_t op, const char *name, const char *value, size_t valLen);
 
@@ -209,7 +209,7 @@ void CephProxyWriteOpZero(ceph_proxy_op_t op,  uint64_t off, uint64_t len);
 
 void CephProxyWriteOpOmapSet(ceph_proxy_op_t op, char const* const* keys, char const* const* vals, const size_t *lens, size_t num);
 
-void CephProxyWriteOpOmapRmKeys(ceph_proxy_op_t op, char const* const* keys, size_t KeysLen);
+void CephProxyWriteOpOmapRmKeys(ceph_proxy_op_t op, char const* const* keys, size_t keysLen);
 
 void CephProxyWriteOpOmapClear(ceph_proxy_op_t op);
 
@@ -227,11 +227,11 @@ void CephProxyReadOpAssertExists(ceph_proxy_op_t op);
 
 void CephProxyReadOpAssertVersion(ceph_proxy_op_t op, uint64_t ver);
 
-void CephProxyReadOpCmpext(ceph_proxy_op_t op, const char *cmpbuf, size_t cmpLen, uint64_t off, int *prval);
+void CephProxyReadOpCmpext(ceph_proxy_op_t op, const char *cmpBuf, size_t cmpLen, uint64_t off, int *prval);
 
-void CephProxyReadOpCmpXattr(ceph_proxy_op_t op,  const char *name, uint8_t compOperator, const char *value, size_t valLen);
+void CephProxyReadOpCmpXattr(ceph_proxy_op_t op,  const char *name, uint8_t compOperator, const char *value, size_t valueLen);
 
-void CephProxyWriteOpGetXattrs(ceph_proxy_op_t op, proxy_xattrs_iter_t *iter, int *prval);
+void CephProxyReadOpGetXattrs(ceph_proxy_op_t op, proxy_xattrs_iter_t *iter, int *prval);
 
 void CephProxyReadOpOmapCmp(ceph_proxy_op_t op, const char *key, uint8_t compOperator, const char *val, size_t valLen, int *prval);
 

@@ -6,7 +6,7 @@
 #include "rados/librados.h"
 #include "CephProxyOp.h"
 
-int RadosClientInit(rados_cient_t *client,const std::string &cephConf);
+int RadosClientInit(rados_client_t *client,const std::string &cephConf);
 void RadosClientShutdown(rados_client_t client);
 int RadosOperationAioOperate(rados_client_t client,rados_op_t op,rados_ioctx_t io,userCallback_t fn,void *cbArg);
 int RadosCreateIoCtx(rados_client_t client,const std::string &poolname,rados_ioctx_t *ctx);
@@ -36,7 +36,7 @@ void RadosWriteOpWriteSGL(rados_op_t op,SGL_S *s,size_t len,uint64_t off);
 void RadosWriteOpWriteFull(rados_op_t op,const char *buffer,size_t len);
 void RadosWriteOpWriteFullSGL(rados_op_t op,const SGL_S *sgl,size_t len);
 void RadosWriteOpWriteSame(rados_op_t op,const char *buffer,
-			size_t dataLen,size_t writeLen,uint64 off);
+			size_t dataLen,size_t writeLen,uint64_t off);
 void RadosWriteOpWriteSameSGL(rados_op_t op,const SGL_S *s,
 				size_t dataLen,size_t writeLen,uint64_t off);
 void RadosWriteOpAppend(rados_op_t op,const char *buffer,size_t len);
@@ -72,20 +72,20 @@ void RadosReadOpCmpXattr(rados_op_t op,const char *name,uint8_t compOperator,
 void RadosReadOpGetXattr(rados_op_t op,const char *name,char **val,int *prval);
 void RadosReadOpGetXattrs(rados_op_t op,proxy_xattrs_iter_t *iter,int *prval);
 
-int RadosReadOpGetNext(proxy_omap_iter_t iter,char **key,char **val,size_t *keyLen,size_t *valLen);
+int RadosOmapGetNext(proxy_omap_iter_t iter,char **key,char **val,size_t *keyLen,size_t *valLen);
 size_t RadosOmapIterSize(proxy_omap_iter_t iter);
 void RadosOmapIterEnd(proxy_omap_iter_t iter);
 
 void RadosReadOpOmapGetKeys(rados_op_t op,const char *startAfter,uint64_t maxReturn,
-			proxy_xattrs_iter_t *iter,unsigned char *pmore,int *prval);
+			proxy_omap_iter_t *iter,unsigned char *pmore,int *prval);
 void RadosReadOpOmapGetVals(rados_op_t op,const char *startAfter,
 			uint64_t maxReturn,rados_omap_iter_t *iter,
 			unsigned char *pmore,int *prval);
 
 void RadosReadOpOmapCmp(rados_op_t op,const char *key,uint8_t compOperator,
-			const char *pmore,int *prval);
+			const char *val, size_t valLen, int *prval);
 
-void RadosReadOpstat(rados_op_t op,uint64_t *psize,time_t *pmtime,int *prval);
+void RadosReadOpStat(rados_op_t op,uint64_t *psize,time_t *pmtime,int *prval);
 void RadosReadOpRead(rados_op_t op,uint64_t offset,size_t len,char *buffer,
 			size_t *bytesRead,int *prval);
 
@@ -101,9 +101,9 @@ void RadosReadOpExec(rados_op_t op,const char *cls,const char *method,
 		size_t *outLen,int *prval);
 
 void RadosReadOpExecUserBuf(rados_op_t op,const char *cls,const char *method,
-			const char *inBuf,size_t inLen,char **outBuf,
+			const char *inBuf,size_t inLen,char *outBuf,
 			size_t *outLen,size_t *usedLen,int *prval);
 
 int RadosGetXattrsNext(proxy_xattrs_iter_t iter,const char **name,const char **val,size_t *len);
-void RadosGetXattrsEnd(proxy_xattrs_iter_titer);
+void RadosGetXattrsEnd(proxy_xattrs_iter_t iter);
 #endif

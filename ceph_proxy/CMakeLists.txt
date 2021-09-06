@@ -8,7 +8,7 @@ set(ceph_proxy_srcs CephProxyInterface.cc
                     RadosWorker.cc
                     RadosWrapper.cc)
 
-add-library(proxy SHARED ${ceph-proxy_srcs})
+add_library(proxy SHARED ${ceph_proxy_srcs})
 target_compile_options(proxy PUBLIC -std=c++17 -g)
 target_include_directories(proxy PUBLIC ${lib_rados_include_dir})
 target_link_directories(proxy PUBLIC ${lib_rados_lib_dir})

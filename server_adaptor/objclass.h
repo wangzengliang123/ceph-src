@@ -4,17 +4,17 @@
 #ifndef CEPH_OBJCLASS_H
 #define CEPH_OBJCLASS_H
 
-#ifndef __cplusplus
+#ifdef __cplusplus
 
 #include "../include/types.h"
-#include "msg/msg_type.h"
+#include "msg/msg_types.h"
 #include "common/hobject.h"
 #include "common/ceph_time.h"
 #include "include/rados/objclass.h"
 
-struct obj_list_watch_request_t;
+struct obj_list_watch_response_t;
 
-extern "C"
+extern "C" {
 #endif
 
 #define CLS_METHOD_PUBLIC 0x4
@@ -62,15 +62,15 @@ extern void class_init(void);
 extern void class_fini(void);
 
 #ifdef __cplusplus
-
+}
 
 class PGLSFilter {
     CephContext *cct;
 
-protected
+protected:
     string xattr;
 
-public
+public:
     PGLSFilter();
     virtual ~PGLSFilter();
     virtual bool filter(const hobject_t &obj, bufferlist &xattr_data, bufferlist &outdata) = 0;
@@ -91,7 +91,7 @@ public
 typedef PGLSFilter *(*cls_cxx_filter_factory_t)();
 
 
-extern int cls_register_cxx_filter(cls_handle_t tclass, const std::string &filter_name, cls_cxx_filter_factory_t fn,
+extern int cls_register_cxx_filter(cls_handle_t hclass, const std::string &filter_name, cls_cxx_filter_factory_t fn,
     cls_filter_handle_t *handle = NULL);
 
 extern int cls_cxx_stat2(cls_method_context_t hctx, uint64_t *size, ceph::real_time *mtime);
@@ -122,7 +122,7 @@ extern int cls_gen_rand_base64(char *dest, int size);
 /* enviroment */
 extern uint64_t cls_current_version(cls_method_context_t hctx);
 extern int cls_current_subop_num(cls_method_context_t hctx);
-extern uint64_t cls_get_features(cls_method-context_t hctx);
+extern uint64_t cls_get_features(cls_method_context_t hctx);
 extern uint64_t cls_get_client_features(cls_method_context_t hctx);
 extern int8_t cls_get_required_osd_release(cls_method_context_t hctx);
 
@@ -137,9 +137,9 @@ extern int cls_get_snapset_seq(cls_method_context_t hctx, uint64_t *snap_seq);
 #define CEPH_OSD_TMAP_CREATE 'c'
 #define CEPH_OSD_TMAP_RM 'r'
 
-int cls_cxx_chunk_write_and_set(cls_method_context_t hctx, int ofs, int len, bufferlist *write_inbl, uint32_t cp_flags,
+int cls_cxx_chunk_write_and_set(cls_method_context_t hctx, int ofs, int len, bufferlist *write_inbl, uint32_t op_flags,
     bufferlist *set_inbl, int set_len);
-bool cls_has_chunk(cls_method_context_t hctx, string fp_old);
+bool cls_has_chunk(cls_method_context_t hctx, string fp_oid);
 
 #endif
 

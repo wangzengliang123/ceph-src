@@ -1,3 +1,4 @@
+#ifndef CEPH_CLASSHANDLER_H
 #define CEPH_CLASSHANDLER_H
 
 #include "include/types.h"
@@ -19,7 +20,7 @@ public:
 	cls_method_call_t func;
 	cls_method_cxx_call_t cxx_func;
 	
-	int exec(cls_method_context_t ctx, bufferlist &indata, bufferlist &outdata):
+	int exec(cls_method_context_t ctx, bufferlist &indata, bufferlist &outdata);
 	void unregister();
 
 	int get_flags()
@@ -49,28 +50,28 @@ public:
 	  CLASS_OPEN,
 	} status;
 
-	string namel
+	string name;
 	ClassHandler *handler;
 	void *handle;
 	
 	bool whitelisted = false;
 
 	map<string, ClassMethod>methods_map;
-	map<string, ClassFilter>filter_map;
+	map<string, ClassFilter>filters_map;
 
 	set<ClassData *> dependencies;
 	set<ClassData *> missing_dependencies;
 
 	ClassMethod *_get_method(const char *mname);
 	
-	ClassData() : status(CLASS_UNKNOWN)I, handler(NULL), handle(NULL) {}
+	ClassData() : status(CLASS_UNKNOWN), handler(NULL), handle(NULL) {}
 	~ClassData() {}
 
 	ClassMethod *register_method(const char *mname, int flags, cls_method_call_t func);
-	ClassMethod*register_cxx_method(const char *mname, int flags, cls_method_call_t func);
+	ClassMethod*register_cxx_method(const char *mname, int flags, cls_method_cxx_call_t func);
 	void unregister_method(ClassMethod *method);
 
-	ClassFilter *register_cxx_filter(const std::string &filter_name, cls_cxx_filter_fatctory_t fn);
+	ClassFilter *register_cxx_filter(const std::string &filter_name, cls_cxx_filter_factory_t fn);
 	void unregister_filter(ClassFilter *method);
 
 	ClassMethod *get_method(const char *mname)
@@ -98,7 +99,7 @@ private:
 	ClassData *_get_class(const string &cname, bool check_allowed);
 	int _load_class(ClassData *cls);
 
-	static bool in_class_list(const std::string &cname, cinst std::string &list);
+	static bool in_class_list(const std::string &cname, const std::string &list);
 
 public:
 	Mutex mutex;
@@ -115,3 +116,5 @@ public:
 
 	void shutdown();
 };
+
+#endif

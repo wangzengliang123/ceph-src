@@ -38,7 +38,7 @@ add_library( ${OSA}
 if (NOT GLOBAL_CACHE_DIR)
     set(GLOBAL_CACHE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../../../global_cache)
 endif()
-message("GLOPBAL_CACHE_DIR=${GLOBAL_CACHE_DIR}")
+message("GLOBAL_CACHE_DIR=${GLOBAL_CACHE_DIR}")
 
 target_include_directories(${OSA}
   PUBLIC
@@ -46,9 +46,9 @@ target_include_directories(${OSA}
   ${CEPH_DIR}/src
   ${CEPH_DIR}/build/include
   ${GLOBAL_CACHE_DIR}/src/include/infras/infrastructure/conf_parser
-  ${GLOBAL_CACHE_DIR}/src/include/infras
+  ${GLOBAL_CACHE_DIR}/src/include/infras/
   ${GLOBAL_CACHE_DIR}/src/include/infras/infrastructure/osax
-  ${GLOABL_CACHE_DIR}/src/include/infras/infrastructure/log
+  ${GLOBAL_CACHE_DIR}/src/include/infras/infrastructure/log
   ${GLOBAL_CACHE_DIR}/src/adaptor/sa
 )
 

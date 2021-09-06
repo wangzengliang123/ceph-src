@@ -37,6 +37,10 @@ bool SaServerDispatcher::ms_dispatch(Message *m)
 	   }
 	   con->send_message(m);
        } break;
+       case CEPH_MSG_OSD_OP: {
+	    MOSDOp *osdOp = static_cast<MOSDOp *>(m);
+	    ptrNetworkModule->EnqueueClientop(osdOp);
+	} break;
        default: {
 	   Salog(LV_DEBUG, LOG_TYPE, "Server dispatch unknown message type %d", m->get_type());
        }

@@ -1,6 +1,9 @@
+#include "CephProxyInterface.h"
 #include "CephProxy.h"
-#include "CephProxyOp.h"
+#include "PoolContext.h"
 #include "RadosWrapper.h"
+#include "CephProxyOp.h"
+#include "RadosWorker.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -11,16 +14,13 @@
 #include <string>
 #include <vector>
 
-#include "CephProxyInterface.h"
-#include "RadosWorker.h"
-#include "PoolContext.h"
 
 CephProxy *CephProxy::instance = nullptr;
 
 int CephProxy::Init(const std::string& cephconf,const std::string &logPath, size_t wNum)
 {
     int ret = 0;
-    config.cephConfigFile = cephconf;
+    config.cephConfigFile = cephConf;
     config.logPath = logPath;
     config.workerNum = wNum;
     state = PROXY_INITING;
@@ -32,9 +32,9 @@ int CephProxy::Init(const std::string& cephconf,const std::string &logPath, size
     }
 
     ret = ptable.Init();
-    if ( ret < 0 ) {
+    if ( ret != 0 ) {
 	fprintf(stderr, "PoolCtxTable Init failed :%d.\n",ret);
-	return ret;
+	goto init_out;
     } 
 
     worker = new RadosWorker(config.workerNum, this);
@@ -85,7 +85,7 @@ rados_ioctx_t CephProxy::GetIoCtx2(const int64_t poolId)
 	if (ioctx == nullptr) {
 	    int ret = RadosCreateIoCtx2(radosClient, poolId ,&ioctx);
 	    if (ret != 0) {
-		std::cout << "Create IoCtx failed: " << ret << std::endl;
+		std::cout << "Create Ioctx failed: " << ret << std::endl;
 		return nullptr;
 	    }
             ptable.Insert(poolId, ioctx);

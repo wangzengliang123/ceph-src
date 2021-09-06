@@ -27,10 +27,10 @@ static void decode_str_str_map_to_bl(bufferlist::const_iterator &p, bufferlist *
         __u32 l;
         decode(l, p);
         p.advance(l);
-        len += 4 + 1;
+        len += 4 + l;
         decode(l, p);
         p.advance(l);
-        len += 4 + 1;
+        len += 4 + l;
     }
     start.copy(len, *out);
 }
@@ -39,7 +39,7 @@ int MsgModule::ConvertClientopToOpreq(OSDOp &clientop, OpRequestOps &oneOp)
 {
     int ret = 0;
     oneOp.opSubType = clientop.op.op;
-    Salog(LV_DEBUG, LOG_TYPE, "ConvertClientopToOpreq CEPH_OSD_OP 0x%1X", oneOp.opSubType);
+    Salog(LV_DEBUG, LOG_TYPE, "ConvertClientopToOpreq CEPH_OSD_OP 0x%lX", oneOp.opSubType);
     switch (oneOp.opSubType) {
         case CEPH_OSD_OP_SPARSE_READ:
         case CEPH_OSD_OP_SYNC_READ:
@@ -48,7 +48,7 @@ int MsgModule::ConvertClientopToOpreq(OSDOp &clientop, OpRequestOps &oneOp)
         case CEPH_OSD_OP_WRITE: {
             oneOp.objOffset = clientop.op.extent.offset;
             oneOp.objLength = clientop.op.extent.length;
-            Salog(LV_DEBUG, LOG_TYPE, "ConvertClientopToOpreq READ/WRITE/CEPH_OSD_OP_WRITEFULL obj=%s type=0x%1X offset=0x%X length=0x%X",
+            Salog(LV_DEBUG, LOG_TYPE, "ConvertClientopToOpreq READ/WRITE/CEPH_OSD_OP_WRITEFULL obj=%s type=0x%lX offset=0x%X length=0x%X",
                 oneOp.objName.c_str(), oneOp.opSubType, oneOp.objOffset, oneOp.objLength);
             ConvertObjRw(clientop, oneOp);
         } break;
@@ -60,7 +60,7 @@ int MsgModule::ConvertClientopToOpreq(OSDOp &clientop, OpRequestOps &oneOp)
             Salog(LV_DEBUG, LOG_TYPE, "Print Attrs key and value:%lu", oneOp.opSubType);
             if (oneOp.keys.size() == oneOp.values.size()) {
                 for (unsigned int i = 0; i < oneOp.keys.size(); i++) {
-                    Salog(LV_DEBUG, LOG_TYPE, "<%s,%s>", oneOp.keys[i].c_str(), oneOp.valuse[i].c_str());
+                    Salog(LV_DEBUG, LOG_TYPE, "<%s,%s>", oneOp.keys[i].c_str(), oneOp.values[i].c_str());
                 }
             } else {
                 string logTmp;
@@ -87,7 +87,7 @@ int MsgModule::ConvertClientopToOpreq(OSDOp &clientop, OpRequestOps &oneOp)
         case CEPH_OSD_OP_OMAPSETHEADER:
         case CEPH_OSD_OP_OMAPGETHEADER: {
             ConvertOmapOp(clientop, oneOp);
-            Salog(LV_DEBUG, LOG_TYPE, "Print OMAP key and values:%lu", oneOp.opSubType);
+            Salog(LV_DEBUG, LOG_TYPE, "Print OMAP key and value:%lu", oneOp.opSubType);
             if (oneOp.keys.size() == oneOp.values.size()) {
                 for (unsigned int i = 0; i < oneOp.keys.size(); i++) {
                     Salog(LV_DEBUG, LOG_TYPE, "<%s,%s>", oneOp.keys[i].c_str(), oneOp.values[i].c_str());
@@ -113,7 +113,7 @@ int MsgModule::ConvertClientopToOpreq(OSDOp &clientop, OpRequestOps &oneOp)
         case CEPH_OSD_OP_CALL:
             break;
         default: {
-            Salog(LV_DEBUG, LOG_TYPE, "Translate ClientOp, unknown op:0x%1X", oneOp.opSubType);
+            Salog(LV_DEBUG, LOG_TYPE, "Translate ClientOp, unknown op:0x%lX", oneOp.opSubType);
         } break;
     }
     return ret;
@@ -177,13 +177,13 @@ void MsgModule::ConvertOmapOp(OSDOp &clientop, OpRequestOps &oneOp)
     } else if (clientop.op.op == CEPH_OSD_OP_OMAPRMKEYS) {
         set<string> keys_to_rm;
         decode(keys_to_rm, bp);
-        for (auto key : key_to_rm) {
+        for (auto key : keys_to_rm) {
             oneOp.keys.push_back(key);
         }
     } else if (clientop.op.op == CEPH_OSD_OP_OMAPGETVALSBYKEYS) {
         set<string> keys_to_get;
         decode(keys_to_get, bp);
-        for (auto key : key_to_get) {
+        for (auto key : keys_to_get) {
             oneOp.keys.push_back(key);
         }
     } else if ((clientop.op.op == CEPH_OSD_OP_OMAPGETHEADER) || (clientop.op.op == CEPH_OSD_OP_OMAPCLEAR)) {

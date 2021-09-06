@@ -3,7 +3,7 @@
 #include <queue>
 #include <mutex>
 #include <condition_variable>
-#include <message/MOSDOp.h>
+#include <messages/MOSDOp.h>
 
 class ClientOpQueue {
 public:
@@ -17,7 +17,7 @@ public:
         reqQueue.push(opReq);
         condOpReq.notify_all();
     }
-    void Dequeue();
+    void DeQueue();
     bool Empty()
     {
         return reqQueue.empty();

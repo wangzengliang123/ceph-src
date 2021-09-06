@@ -17,9 +17,9 @@ typedef void *rados_client_t;
 class RadosWorker;
 
 typedef enum {
-	PROXY_INITING = 1;
-	PROXY_ACTIVE = 2;
-	PROXY_DOWN = 3;
+	PROXY_INITING = 1,
+	PROXY_ACTIVE = 2,
+	PROXY_DOWN = 3,
 }CephProxyState;
 
 struct ProxyConfig {
@@ -43,12 +43,12 @@ private:
 public:
 	static CephProxy *GetProxy() {
 	    if ( instance == nullptr) {
-		 instance == new CephProxy();
+		 instance = new CephProxy();
 	     }
 	     return instance;
 	}
 
-	int Init(const std::string& cephconf,const std::string &logPath, size_t wNum);
+	int Init(const std::string& cephConf,const std::string &logPath, size_t wNum);
 	void Shutdown();
 	void Enqueue(rados_ioctx_t ioctx, ceph_proxy_op_t op, completion_t c);
 	CephProxyState GetState() const;

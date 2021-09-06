@@ -1,5 +1,5 @@
 #include "RadosWorker.h"
-#include "CephProxyop.h"
+#include "CephProxyOp.h"
 #include "RadosWrapper.h"
 
 #include <pthread.h>
@@ -7,7 +7,7 @@
 #include <vector>
 #include <utility>
 
-void RadosIoWorker::Queue(rados_ioctx_t ioctx, ceph_proxy_op_t op, commpletion_t c )
+void RadosIOWorker::Queue(rados_ioctx_t ioctx, ceph_proxy_op_t op, completion_t c )
 {
     std::unique_lock ul(ioworkerLock);
 
@@ -23,14 +23,14 @@ void RadosIoWorker::Queue(rados_ioctx_t ioctx, ceph_proxy_op_t op, commpletion_t
     Ops.push_back(reqCtx);
 }
 
-void* RadosIoWorker::opHandler() {
+void* RadosIOWorker::OpHandler() {
     std::unique_lock ul(ioworkerLock);
 
     while(!ioworkerStop) {
 	while(!Ops.empty()) {
 	    std::vector<RequestCtx> ls;
-	    ls.swqp(Ops);
-	    ioworkerRuning = true;
+	    ls.swap(Ops);
+	    ioworkerRunning = true;
     	    ul.unlock();
 
             int ret;
@@ -45,7 +45,7 @@ void* RadosIoWorker::opHandler() {
 	    ls.clear();
 
 	    ul.lock();
-	    ioworkerRuning = false;
+	    ioworkerRunning = false;
 	}
 	
 	if (ioworkerEmptyWait) {
@@ -59,7 +59,7 @@ void* RadosIoWorker::opHandler() {
 	ioworkerCond.wait(ul);
     }
     ioworkerEmptyCond.notify_all();
-    ioworkerStop == false;
+    ioworkerStop = false;
   
     return (void *)NULL;
 }

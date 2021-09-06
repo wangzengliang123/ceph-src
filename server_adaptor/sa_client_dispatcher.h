@@ -45,7 +45,7 @@ public:
 	bool ms_get_authorizer(int dest_type, AuthAuthorizer **a) override
 	{
 		return false;
-	}
+	};
 
 	int ms_handle_authentication(Connection *con) override
 	{

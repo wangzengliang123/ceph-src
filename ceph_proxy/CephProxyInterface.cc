@@ -1,7 +1,7 @@
 #include "CephProxyInterface.h"
 #include "CephProxy.h"
-#include "CephProxyOp.h"
 #include "RadosWrapper.h"
+#include "CephProxyOp.h"
 
 #include <iostream>
 #include <string>
@@ -33,19 +33,19 @@ void CephProxyShutdown(ceph_proxy_t proxy)
     proxy = nullptr;
 }
 
-void CephProxyQueueOp(ceph_proxy_t proxy,rados_ioctx_tioctx, ceph_proxy_op_t op, completio_t c)
+void CephProxyQueueOp(ceph_proxy_t proxy,rados_ioctx_tioctx, ceph_proxy_op_t op, completion_t c)
 {
 	CephProxy *cephProxy = reinterpret_cast<CephProxy*>(proxy);
 	cephProxy->Enqueue(ioctx, op, c);
 }
 
-rados_ioctx_t CephproxyGetIoCtx(ceph_proxy_t proxy, const char *poolname)
+rados_ioctx_t CephProxyGetIoCtx(ceph_proxy_t proxy, const char *poolname)
 {
 	CephProxy *cephProxy = reinterpret_cast<CephProxy *>(proxy);
 	return cephProxy->GetIoCtx(poolname);
 }
  
-rados_ioctx_t CephproxyGetIoCtx2(ceph_proxy_t proxy, const int64_t poolId)
+rados_ioctx_t CephProxyGetIoCtx2(ceph_proxy_t proxy, const int64_t poolId)
 {
 	CephProxy *cephProxy = reinterpret_cast<CephProxy *>(proxy);
 	return cephProxy->GetIoCtx2(poolId);
@@ -174,7 +174,7 @@ void CephProxyWriteOpAppend(ceph_proxy_op_t op, const char *buffer, size_t len)
 	RadosWriteOpAppend(op, buffer, len);
 }
 
-void CephProxyWriteOpAppendSGL(ceph_proxy_op_t op, const SGL_S *s, size_t len)
+void CephProxyWriteOpAppend(ceph_proxy_op_t op, const SGL_S *s, size_t len)
 {
 	RadosWriteOpAppendSGL(op, s, len);
 }
@@ -227,12 +227,13 @@ int CephProxyReadOpInit(ceph_proxy_op_t *op, const char *pool, const char* oid)
 int CephProxyReadOpInit2(ceph_proxy_op_t *op, const int64_t poolId, const char* oid)
 {
 
-	*op = RadosReadOpInit2(pool, oid);
+	*op = RadosReadOpInit2(poolId, oid);
 	if (*op == nullptr) {
 	std::cout << "Create ReadOp failed." << std::endl;
 	return -1;
 	}
 	return 0;
+}
 
 void CephProxyReadOpRelease(ceph_proxy_op_t op)
 {
@@ -264,7 +265,7 @@ void CephProxyReadOpCmpXattr(ceph_proxy_op_t op,  const char *name, uint8_t comp
 	RadosReadOpCmpXattr(op, name, compOperator, value, valueLen);
 }
 
-void CephProxyWriteOpGetXattrs(ceph_proxy_op_t op, proxy_xattrs_iter_t *iter, int *prval)
+void CephProxyReadOpGetXattrs(ceph_proxy_op_t op, proxy_xattrs_iter_t *iter, int *prval)
 {
 	RadosReadOpGetXattrs(op, iter, prval);
 }

@@ -1,6 +1,6 @@
 
 #include "CephProxyInterface.h"
-#include "CephproxyOp.h"
+#include "CephProxyOp.h"
 
 completion_t CompletionInit(userCallback_t fn, void *cbArg)
 {

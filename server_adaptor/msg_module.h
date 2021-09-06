@@ -8,12 +8,12 @@
 #include <queue>
 #include <mutex>
 
-#include <message/MOSDOp.h>
+#include <messages/MOSDOp.h>
 #include "osd/ClassHandler.h"
 
 #include "sa_def.h"
 
-usding MSG_UNIQUE_LOCK = std::unique_lock<std::mutex>;
+using MSG_UNIQUE_LOCK = std::unique_lock<std::mutex>;
 
 class MsgModule {
     std::queue<MOSDOp *> qClientopStore {};
