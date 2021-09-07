@@ -168,7 +168,7 @@ int NetworkModule::ThreadFuncBodyClient()
     DummyAuthClientServer dummy_auth(g_ceph_context);
     clientMessenger->set_auth_client(&dummy_auth);
     clientMessenger->set_magic(MSG_MAGIC_TRACE_CTR);
-    clientMessenger->set_default_policy(Messenger::Policy::ossy_client(0));
+    clientMessenger->set_default_policy(Messenger::Policy::lossy_client(0));
 
 
     clientDispatcher = new SaClientDispatcher(clientMessenger, ptrMsgModule);
@@ -274,7 +274,7 @@ void NetworkModule::CreateWorkThread(uint32_t ptnum, uint32_t qnum, uint32_t clu
         opDispatcher.push_back(new ClientOpQueue());
         doOpThread.push_back(thread(ThreadFunc, this, i, i % coreNumber));
     }
-    Salog(LV_DEBUG, LOG_TYPE, "CreateWorkThread %d %d %d", ptNum, queueNum, totalPtNum, nodePtmap.size());
+    Salog(LV_DEBUG, LOG_TYPE, "CreateWorkThread %d %d %d", ptNum, queueNum, totalPtNum, nodePtMap.size());
 }
 
 void NetworkModule::StopThread()
@@ -379,7 +379,7 @@ void NetworkModule::OpHandlerThread(int threadNum, int coreId)
         }
         opDispatch->condOpReq.wait(opReqLock);
     }
-    Salog(LV_DEBUG, "OpHandler", "OpHandlerThread Finish");
+    Salog(LV_DEBUG, "OpHandler", "OpHandlerThread  Finish");
 }
 
 uint32_t NetworkModule::EnqueueClientop(MOSDOp *opReq)
@@ -447,7 +447,7 @@ void EncodeOmapGetvals(const SaBatchKv *KVs, int i, MOSDOp *mosdop)
             encode(std::string_view(KVs->keys[j].buf, KVs->keys[j].len), bl);
         }
         if (KVs->values[j].buf && KVs->values[j].len) {
-            Salog(LV_DEBUG, LOG_TYPE, "CEPH_OSD_OP_OMAPGETVALS get key KVs->values[j].buf=%s", KVs->keys[j].buf);
+            Salog(LV_DEBUG, LOG_TYPE, "CEPH_OSD_OP_OMAPGETVALS get key KVs->keys[j].buf=%s", KVs->values[j].buf);
             encode(std::string_view(KVs->values[j].buf, KVs->values[j].len), bl);
         }
     }

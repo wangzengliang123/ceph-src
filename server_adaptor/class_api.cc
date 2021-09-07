@@ -766,7 +766,7 @@ int cls_cxx_chunk_write_and_set(cls_method_context_t hctx, int ofs, int len, buf
 	ops[1].op.op = CEPH_OSD_OP_CALL;
 	ops[1].op.cls.class_len = strlen(cname);
 	ops[1].op.cls.method_len = strlen(method);
-	ops[1].op.indata_len = set_len;
+	ops[1].cls.indata_len = set_len;
 	ops[1].indata.append(cname, ops[1].op.cls.class_len);
 	ops[1].indata.append(method, ops[1].op.cls.method_len);
 	ops[1].indata.append(*set_inbl);

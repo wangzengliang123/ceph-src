@@ -17,7 +17,7 @@
 
 CephProxy *CephProxy::instance = nullptr;
 
-int CephProxy::Init(const std::string& cephconf,const std::string &logPath, size_t wNum)
+int CephProxy::Init(const std::string& cephConf,const std::string &logPath, size_t wNum)
 {
     int ret = 0;
     config.cephConfigFile = cephConf;
@@ -33,7 +33,7 @@ int CephProxy::Init(const std::string& cephconf,const std::string &logPath, size
 
     ret = ptable.Init();
     if ( ret != 0 ) {
-	fprintf(stderr, "PoolCtxTable Init failed :%d.\n",ret);
+	fprintf(stderr, "PoolCtxTable Init failed: %d.\n",ret);
 	goto init_out;
     } 
 

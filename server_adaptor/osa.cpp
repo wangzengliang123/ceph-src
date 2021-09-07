@@ -127,7 +127,7 @@ int OSA_InitExt(void *ophandler, uint32_t ptNum, uint32_t clusterTotalPtNum, std
 	string sAddr = rAddr;
         string sPort = rPort;
 	string testMode = "0";
-	Salog(LV_INFORMATION, LOG_TYPE, "Server adaptor init rAddr=%s rPort=%s sAddr=%s sPort==%s testmode =%s" ,
+	Salog(LV_INFORMATION, LOG_TYPE, "Server adaptor init rAddr=%s rPort=%s sAddr=%s sPort==%s testmode=%s" ,
 	rAddr.c_str(),rPort.c_str(), sAddr.c_str(), sPort.c_str(), testMode.c_str());
 	if (rAddr == "" || rPort == "") {
 	    Salog(LV_CRITICAL, LOG_TYPE, "error : Server adaptor Listen ip:port is empty.");

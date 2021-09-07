@@ -207,7 +207,7 @@ ClassHandler::ClassData *ClassHandler::register_class(const char *cname)
 	ldout(cct, 10) << "register_class " << cname << " status " << cls->status << dendl;
 
 	if(cls->status !=ClassData::CLASS_INITIALIZING){
-		ldout(cct, 0) << "class " << cname << " isn`t loaded; is the class registering under the wrong name?" << dendl;
+		ldout(cct, 0) << "class " << cname << " isn't loaded; is the class registering under the wrong name?" << dendl;
 		return NULL;
 	}
 	return cls;
@@ -223,7 +223,7 @@ ClassHandler::ClassMethod *ClassHandler::ClassData::register_method(const char *
 {
 	/*no need for locking, called under the class_init mutex */
 	if(!flags){
-		lderr(handler->cct) << "register_method " << name << "." << mname << " flags " << flags << " " <<
+		lderr(handler->cct) << "register_method " << name << "." << mname << " flags" << flags << " " <<
 			(void *)func << " FAILED -- flags must be non-zero" << dendl;
 		return NULL;
 	}

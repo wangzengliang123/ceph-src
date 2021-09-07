@@ -27,6 +27,7 @@ public:
         pthread_spin_init(&lock, PTHREAD_PROCESS_SHARED);
         table1.clear();
         table2.clear();
+	return 0;
     }
 
     int Insert(const std::string &poolname, rados_ioctx_t ioctx) {
@@ -105,11 +106,11 @@ public:
 	}
 
         for (auto iter : table2) {
-	    RadosReleaseIoCtx(iteri.second);
+	    RadosReleaseIoCtx(iter.second);
 	}
 
 	table1.clear();
-	table1.clear();
+	table2.clear();
 
 	pthread_spin_unlock(&lock);
     }

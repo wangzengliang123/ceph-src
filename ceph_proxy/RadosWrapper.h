@@ -102,7 +102,7 @@ void RadosReadOpExec(rados_op_t op,const char *cls,const char *method,
 
 void RadosReadOpExecUserBuf(rados_op_t op,const char *cls,const char *method,
 			const char *inBuf,size_t inLen,char *outBuf,
-			size_t *outLen,size_t *usedLen,int *prval);
+			size_t outLen,size_t *usedLen,int *prval);
 
 int RadosGetXattrsNext(proxy_xattrs_iter_t iter,const char **name,const char **val,size_t *len);
 void RadosGetXattrsEnd(proxy_xattrs_iter_t iter);

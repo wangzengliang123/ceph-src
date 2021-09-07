@@ -33,7 +33,7 @@ void CephProxyShutdown(ceph_proxy_t proxy)
     proxy = nullptr;
 }
 
-void CephProxyQueueOp(ceph_proxy_t proxy,rados_ioctx_tioctx, ceph_proxy_op_t op, completion_t c)
+void CephProxyQueueOp(ceph_proxy_t proxy,rados_ioctx_t ioctx, ceph_proxy_op_t op, completion_t c)
 {
 	CephProxy *cephProxy = reinterpret_cast<CephProxy*>(proxy);
 	cephProxy->Enqueue(ioctx, op, c);
@@ -84,7 +84,7 @@ int CephProxyWriteOpInit2(ceph_proxy_op_t *op, const int64_t poolId, const char*
 {
 	*op = RadosWriteOpInit2(poolId, oid);
 	if (*op == nullptr) {
-	    std::cout << "Create Write Op failed." << std::endl;
+	    std::cout << "Create write Op failed." << std::endl;
 	    return -1;
 	}
 	return 0;

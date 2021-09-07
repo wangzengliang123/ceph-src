@@ -531,10 +531,9 @@ void RadosReadOpOmapGetKeys(rados_op_t op, const char *startAfter, uint64_t maxR
 	RadosOmapIter *oIter = new RadosOmapIter();
 	const char *start = startAfter ? startAfter : "";
 	readOp->reqCtx.omap.iter = oIter;
-	readOp->op.omap_get_keys2(start, maxReturn, &(oIter->values), (bool *)pmore, prval);
+	readOp->op.omap_get_keys2(start, maxReturn, &(oIter->keys), (bool *)pmore, prval);
 	*iter = oIter;
 }
-:w
 
 int RadosOmapGetNext(proxy_omap_iter_t iter, char **key, char **val, size_t *keyLen, size_t *valLen)
 {
@@ -600,7 +599,7 @@ void RadosReadOpOmapCmp(rados_op_t op, const char *key, uint8_t compOperator,
     readOp->op.omap_cmp(assertions, prval);
 }
 
-void RadosReadOpStat(rados_op_top, uint64_t *psize, time_t *pmtime, int *prval)
+void RadosReadOpStat(rados_op_t op, uint64_t *psize, time_t *pmtime, int *prval)
 {
     RadosObjectReadOp *readOp = reinterpret_cast<RadosObjectReadOp *>(op);
     readOp->op.stat(psize, pmtime, prval);
@@ -653,7 +652,7 @@ void RadosReadOpExec(rados_op_t op, const char *cls, const char *method,
 
 int RadosOperationOperate(rados_op_t op, rados_ioctx_t io)
 {
-    RadosObjectOperate *rop = reinterpret_cast<RadosObjectOperate *>(op);
+    RadosObjectOperation *rop = reinterpret_cast<RadosObjectOperation *>(op);
     librados::IoCtx *ctx =  reinterpret_cast<librados::IoCtx *>(io);
     int ret = 0;
     switch(rop->opType) {
@@ -664,7 +663,7 @@ int RadosOperationOperate(rados_op_t op, rados_ioctx_t io)
 	}
         break;
 	case BATCH_WRITE_OP: {
-        RadosObjectWriteOp *writeOp = dynamic_cast<RadosobjectWriteOp *>(rop);
+        RadosObjectWriteOp *writeOp = dynamic_cast<RadosObjectWriteOp *>(rop);
         ret = ctx->operate(writeOp->objectId, &(writeOp->op));
         }
 	break;
@@ -678,7 +677,7 @@ int RadosOperationOperate(rados_op_t op, rados_ioctx_t io)
 void ReadCallback(librados::completion_t comp, void *arg)
 {
     RadosObjectReadOp *readOp = (RadosObjectReadOp *)arg;
-    if (readOp_results.length() > 0) {
+    if (readOp->results.length() > 0) {
 	if (readOp->reqCtx.read.buffer != nullptr) {   
 	memcpy(readOp->reqCtx.read.buffer, readOp->results.c_str(), readOp->results.length());
 	} else if (readOp->reqCtx.readSgl.sgl != nullptr) {

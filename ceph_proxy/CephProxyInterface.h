@@ -159,7 +159,7 @@ int CephProxyGetClusterStat(ceph_proxy_t proxy, CephClusterStat *result);
 
 int CephProxyGetPoolStat(ceph_proxy_t proxy, rados_ioctx_t ioctx, CephPoolStat *stats);
 
-void CephProxyQueueOp(ceph_proxy_t proxy,rados_ioctx_tioctx, ceph_proxy_op_t op, completion_t c);
+void CephProxyQueueOp(ceph_proxy_t proxy,rados_ioctx_t ioctx, ceph_proxy_op_t op, completion_t c);
 
 int CephProxyWriteOpInit(ceph_proxy_op_t *op, const char *pool, const char* oid);
 
